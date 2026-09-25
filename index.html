@@ -2137,43 +2137,39 @@ const LEVEL_I18N = {};
   // famille de camouflage de l'environnement (urbain sert pour résidence,
   // entrepôt, bureaux et banque, qui partagent tous ce camouflage).
   // Portraits d'opérateurs par classe x environnement (Shadow ignore le camouflage).
-  const ENV_OPERATOR_IMG = {
-    urbain: './op-urbain.png',
-    desert: './op-desert.png',
-    jungle: './op-jungle.png',
-    arctique: './op-arctique.png',
-  };
-  // Variantes du portrait de briefing par skin d'arme débloqué (Assault
-  // seulement — c'est la seule classe montrée en briefing, et la seule à
-  // porter le M4 skinnable). Retombe sur le portrait de base tant qu'aucun
-  // skin n'est débloqué.
-  const ENV_OPERATOR_IMG_SKINNED = {
-    urbain: { cuivre: './op-urbain-cuivre.png', argent: './op-urbain-argent.png', or: './op-urbain-or.png', damas: './op-urbain-damas.png', platine: './op-urbain-platine.png', diamant: './op-urbain-diamant.png' },
-    desert: { cuivre: './op-desert-cuivre.png', argent: './op-desert-argent.png', or: './op-desert-or.png', damas: './op-desert-damas.png', platine: './op-desert-platine.png', diamant: './op-desert-diamant.png' },
-    jungle: { cuivre: './op-jungle-cuivre.png', argent: './op-jungle-argent.png', or: './op-jungle-or.png', damas: './op-jungle-damas.png', platine: './op-jungle-platine.png', diamant: './op-jungle-diamant.png' },
-    arctique: { cuivre: './op-arctique-cuivre.png', argent: './op-arctique-argent.png', or: './op-arctique-or.png', damas: './op-arctique-damas.png', platine: './op-arctique-platine.png', diamant: './op-arctique-diamant.png' },
+  // Portraits d'opérateurs Dead Sector : un seul par classe, quel que soit
+  // l'environnement — ce sont des survivants, pas des unités en uniforme
+  // interchangeable ; ils n'ont pas de garde-robe à assortir au décor.
+  // Seule l'arme du couteau visible sur le portrait Assault change avec les
+  // paliers débloqués (l'objet, pas la tenue).
+  const OPERATOR_IMG_ASSAULT = './op-assault.png';
+  const OPERATOR_IMG_ASSAULT_SKINNED = {
+    fortune: './op-assault-fortune.png',
+    camouflage: './op-assault-camouflage.png',
+    blindage: './op-assault-blindage.png',
+    macabre: './op-assault-macabre.png',
+    patine: './op-assault-patine.png',
+    dore: './op-assault-dore.png',
   };
   function getBriefingOperatorImg(env) {
     const skin = getEquippedSkin();
-    const bySkin = skin && ENV_OPERATOR_IMG_SKINNED[env] && ENV_OPERATOR_IMG_SKINNED[env][skin.slug];
-    return bySkin || ENV_OPERATOR_IMG[env] || '';
+    const bySkin = skin && OPERATOR_IMG_ASSAULT_SKINNED[skin.slug];
+    return bySkin || OPERATOR_IMG_ASSAULT;
   }
+  // Les infectés, eux, varient bien par environnement — ce sont des menaces
+  // façonnées par leur lieu de contamination, pas des tenues à assortir.
   const ENV_ENEMY_IMG = {
-    urbain: './enemy-urbain.png',
     desert: './enemy-desert.png',
-    jungle: './enemy-jungle.png',
-    arctique: './enemy-arctique.png',
   };
-  const CLASS_ENV_OPERATOR_IMG = {
-    Assault: ENV_OPERATOR_IMG,
-    Heavy: { urbain: './op-heavy-urbain.png', desert: './op-heavy-desert.png', jungle: './op-heavy-jungle.png', arctique: './op-heavy-arctique.png' },
-    Light: { urbain: './op-light-urbain.png', desert: './op-light-desert.png', jungle: './op-light-jungle.png', arctique: './op-light-arctique.png' },
-  };
+  const OPERATOR_IMG_HEAVY = './op-heavy.png';
+  const OPERATOR_IMG_LIGHT = './op-light.png';
   const SHADOW_OPERATOR_IMG = './op-shadow.png';
+  const KNIFE_STANDARD_IMG = './knife-tier0.jpg'; // couteau au palier 0, avant tout déblocage
   function getOperatorPortrait(cls, env) {
     if (cls === 'Shadow') return SHADOW_OPERATOR_IMG;
-    const set = CLASS_ENV_OPERATOR_IMG[cls] || ENV_OPERATOR_IMG;
-    return set[env] || set.urbain;
+    if (cls === 'Heavy') return OPERATOR_IMG_HEAVY;
+    if (cls === 'Light') return OPERATOR_IMG_LIGHT;
+    return getBriefingOperatorImg(env);
   }
 
   // Palettes de plancher/mur par environnement — donne à chaque famille de
@@ -2250,7 +2246,7 @@ const LEVEL_I18N = {};
     const subEl = document.getElementById('knife-progress-sub');
 
     const currentTierInfo = shownTier > 0 ? MILESTONE_TIERS[shownTier - 1] : null;
-    img.src = currentTierInfo ? currentTierInfo.img : SHADOW_OPERATOR_IMG;
+    img.src = currentTierInfo ? currentTierInfo.img : KNIFE_STANDARD_IMG;
     nameEl.textContent = currentTierInfo ? t(currentTierInfo.nameKey) : t('knifeBaseLabel');
     tierEl.textContent = t('knifeTierWord') + ' ' + shownTier + '/10';
 
