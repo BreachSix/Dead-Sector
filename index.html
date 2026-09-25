@@ -1,0 +1,3861 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Breach Six: Dead Sector</title>
+<meta name="description" content="Jeu de survie tactique — nettoie la contamination, escouade par escouade.">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="theme-color" content="#3f4630">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #14160f;
+    --panel: #1e2117;
+    --panel-2: #262a1c;
+    --wall: #565c3f;
+    --floor: #3d4230;
+    --amber: #c9a24a;
+    --amber-dim: #8a7132;
+    --squad-a: #c9a24a;
+    --squad-b: #5b8a9e;
+    --danger: #b1503e;
+    --ok: #6f8f52;
+    --enemy: #2c3e5c;
+    --enemy-dark: #18202f;
+    --text: #e9e4d4;
+    --text-dim: #a6a190;
+    --font-head: 'Oswald', 'Arial Narrow', sans-serif;
+    --font-body: 'Inter', system-ui, sans-serif;
+  }
+  :root:not([data-theme="light"]) { color-scheme: dark; }
+  html.large-text { font-size: 112%; }
+  body.colorblind { --danger: #d97706; --ok: #2b7fb8; }
+  @media (prefers-color-scheme: light) {
+    :root:not([data-theme="dark"]) {
+      --bg: #14160f; --panel: #1e2117; --text: #e9e4d4;
+    }
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    margin: 0; padding: 0; background: var(--bg); color: var(--text);
+    font-family: var(--font-body); overscroll-behavior: none; user-select: none;
+    width: 100%; overflow-x: hidden;
+  }
+  .app {
+    max-width: 480px; margin: 0 auto; height: 100vh; max-height: 100svh;
+    display: flex; flex-direction: column; padding: 8px 12px 10px;
+    overflow: hidden;
+  }
+  header {
+    display: flex; align-items: baseline; justify-content: space-between;
+    padding-bottom: 6px; border-bottom: 1px solid var(--wall);
+    margin-bottom: 6px; flex-shrink: 0;
+  }
+  header h1 {
+    font-family: var(--font-head); font-size: 1.15rem; font-weight: 700;
+    margin: 0; letter-spacing: 0.02em; color: var(--text);
+  }
+  header h1 span { color: var(--amber); }
+  header .mission-tag {
+    font-size: 0.66rem; color: var(--text-dim); font-family: var(--font-body);
+  }
+  .mission-tag { font-size: 0.66rem; color: var(--text-dim); margin-bottom: 6px; flex-shrink: 0; }
+  .compose-btn {
+    font-family: var(--font-head); font-size: 0.68rem; letter-spacing: 0.04em;
+    background: transparent; border: 1px solid var(--amber-dim); color: var(--amber);
+    padding: 5px 10px; border-radius: 4px; cursor: pointer;
+  }
+  .compose-btn.active { background: var(--amber); color: #2a2410; border-color: var(--amber); }
+  .lang-btn {
+    font-family: var(--font-head); font-size: 0.62rem; letter-spacing: 0.03em;
+    background: transparent; border: 1px solid var(--amber-dim); color: var(--amber);
+    padding: 5px 4px; border-radius: 4px; cursor: pointer;
+  }
+  .lang-btn.active { background: var(--amber); color: #2a2410; border-color: var(--amber); }
+  .brief {
+    background: var(--panel); border: 1px solid var(--wall); border-radius: 4px;
+    padding: 6px 10px; margin-bottom: 6px; font-size: 0.7rem; color: var(--text-dim);
+    line-height: 1.3; flex-shrink: 0;
+  }
+  .brief strong { color: var(--text); font-weight: 600; }
+
+  .room-wrap { position: relative; margin-bottom: 6px; flex-shrink: 1; min-height: 0; display: flex; align-items: center; justify-content: center; }
+  svg { display: block; width: auto; height: 100%; max-width: 100%; max-height: 34vh; touch-action: manipulation; }
+
+  body.night {
+    --amber-dim: #6b5822;
+    --wall: #747a5a;
+  }
+  body.night .room-wrap::after {
+    content: ''; position: absolute; inset: 0; background: radial-gradient(circle at 50% 40%, rgba(120,140,90,0.04), rgba(0,0,0,0.4));
+    pointer-events: none; border-radius: 4px;
+  }
+  .door-hit { cursor: pointer; }
+  .door-ring { transition: r 0.15s ease, fill 0.15s ease; }
+  .door-label {
+    font-family: var(--font-body); font-size: 9px; fill: var(--text-dim);
+    text-anchor: middle; pointer-events: none;
+  }
+  .door-count {
+    font-family: var(--font-head); font-size: 11px; font-weight: 700;
+    fill: #1a1d16; pointer-events: none;
+  }
+
+  .op-marker { }
+  .op-marker text { font-family: var(--font-head); font-weight: 700; pointer-events: none; }
+  .threat-pulse { animation: threatPulse 1.8s ease-in-out infinite; transform-origin: center; transform-box: fill-box; }
+  @keyframes threatPulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.06); }
+  }
+
+  .roster {
+    display: flex; flex-direction: column; gap: 5px; margin-bottom: 6px; flex-shrink: 0;
+  }
+  .squad-row { display: flex; flex-direction: column; gap: 3px; }
+  .squad-title {
+    font-family: var(--font-head); font-size: 0.64rem; letter-spacing: 0.06em;
+    color: var(--text-dim); font-weight: 600;
+  }
+  .squad-title.a { color: var(--squad-a); }
+  .squad-title.b { color: var(--squad-b); }
+  .chips { display: flex; gap: 6px; }
+  .chip {
+    flex: 1; background: var(--panel); border: 2px solid var(--wall); border-radius: 6px;
+    padding: 5px 4px; text-align: center; cursor: pointer;
+    transition: border-color 0.15s ease, background 0.15s ease, opacity 0.15s ease;
+    min-height: 40px; display: flex; flex-direction: row; align-items: center; gap: 6px;
+  }
+  .chip-portrait {
+    width: 28px; height: 28px; border-radius: 4px; object-fit: cover; object-position: top center;
+    flex-shrink: 0; background: var(--panel-2);
+  }
+  .chip-text { display: flex; flex-direction: column; justify-content: center; gap: 1px; min-width: 0; text-align: left; }
+  .chip .cls { font-family: var(--font-head); font-size: 0.7rem; font-weight: 600; }
+  .chip .wpn { font-size: 0.56rem; color: var(--text-dim); }
+  .chip.selected { border-color: var(--amber); background: var(--panel-2); }
+  .chip.assigned { opacity: 0.45; }
+  .chip.ko { opacity: 0.3; filter: grayscale(1); cursor: default; }
+  .chip.ko .wpn { color: var(--danger); }
+  .chip.squad-a.selected { border-color: var(--squad-a); }
+  .chip.squad-b.selected { border-color: var(--squad-b); }
+  .chip.compose { border-style: dashed; border-color: var(--amber-dim); }
+  .chip.compose:active { border-color: var(--amber); }
+  .wpn-toggle {
+    text-decoration: underline dotted; text-underline-offset: 2px;
+  }
+
+  .hint {
+    font-size: 0.7rem; color: var(--text-dim); text-align: center;
+    min-height: 14px; margin-bottom: 6px; flex-shrink: 0;
+  }
+
+  .legend {
+    display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 12px;
+    font-size: 0.62rem; color: var(--text-dim); margin-bottom: 4px; flex-shrink: 0;
+  }
+  .legend-item { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
+  .legend-swatch {
+    width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; display: inline-block;
+    border: 1px solid rgba(0,0,0,0.25);
+  }
+  .legend-op { background: linear-gradient(90deg, var(--squad-a) 50%, var(--squad-b) 50%); }
+  .legend-icon { flex-shrink: 0; display: block; }
+  .legend-hostage { background: #c9c4b0; }
+  .legend-bomb { background: var(--danger); border-radius: 2px; }
+
+  .go-btn {
+    width: 100%; padding: 12px; border-radius: 6px; border: none;
+    font-family: var(--font-head); font-size: 0.92rem; letter-spacing: 0.08em;
+    background: var(--amber-dim); color: #2a2410; cursor: pointer;
+    transition: background 0.2s ease, opacity 0.2s ease; flex-shrink: 0;
+  }
+  .go-btn.ready { background: var(--amber); cursor: pointer; }
+  .go-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .overlay {
+    position: fixed; inset: 0; background: rgba(10,11,7,0.88);
+    display: flex; align-items: center; justify-content: center;
+    opacity: 0; pointer-events: none; transition: opacity 0.25s ease; z-index: 10;
+    padding: 20px;
+  }
+  .overlay.show { opacity: 1; pointer-events: auto; }
+  .result-card {
+    background: var(--panel); border: 1px solid var(--wall); border-radius: 8px;
+    padding: 22px; max-width: 340px; width: 100%; text-align: center;
+  }
+  .result-card h2 {
+    font-family: var(--font-head); font-size: 1.3rem; margin: 0 0 4px; color: var(--amber);
+  }
+  .result-card .score {
+    font-family: var(--font-head); font-size: 2.2rem; margin: 8px 0; color: var(--text);
+  }
+  .obj-list { list-style: none; padding: 0; margin: 14px 0; text-align: left; }
+  .obj-list li {
+    display: flex; align-items: center; gap: 8px; padding: 6px 0;
+    font-size: 0.85rem; border-bottom: 1px solid var(--wall);
+  }
+  .obj-list li:last-child { border-bottom: none; }
+  .obj-list .mark { font-size: 1rem; width: 18px; text-align: center; }
+  .obj-list .ok .mark { color: var(--ok); }
+  .obj-list .no .mark { color: var(--danger); }
+  .replay-btn {
+    margin-top: 10px; width: 100%; padding: 12px; border-radius: 6px; border: 1px solid var(--amber);
+    background: transparent; color: var(--amber); font-family: var(--font-head);
+    font-size: 0.9rem; letter-spacing: 0.05em; cursor: pointer;
+  }
+
+  footer { display: none; }
+
+  #menu-screen, #mission-screen, #briefing-screen { display: flex; flex-direction: column; height: 100%; }
+  .briefing-image-wrap {
+    width: 100%; max-height: 38vh; overflow: hidden; border-radius: 6px;
+    border: 1px solid var(--wall); margin-bottom: 10px; flex-shrink: 0; background: var(--panel);
+    position: relative;
+  }
+  .briefing-image-wrap img#briefing-image { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .briefing-unit-logo {
+    position: absolute; top: 8px; left: 8px; width: 17%; max-width: 64px; height: auto;
+    aspect-ratio: 1 / 1; object-fit: cover; border-radius: 50%;
+    opacity: 0.6; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.55));
+    pointer-events: none;
+  }
+  .briefing-enemy-wrap {
+    max-height: 32vh; overflow: hidden; border-radius: 6px;
+    border: 1px solid var(--wall); background: var(--panel); margin-bottom: 10px;
+    display: flex; align-items: center; justify-content: center; position: relative;
+  }
+  .briefing-faction-logo {
+    position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    width: 85%; height: auto; opacity: 0.42; filter: grayscale(1);
+    -webkit-mask-image: radial-gradient(ellipse 65% 65% at center, black 55%, transparent 90%);
+    mask-image: radial-gradient(ellipse 65% 65% at center, black 55%, transparent 90%);
+    pointer-events: none;
+  }
+  .briefing-enemy-wrap img#briefing-enemy-img { max-width: 100%; max-height: 32vh; object-fit: contain; display: block; position: relative; z-index: 1; }
+  .briefing-operator-vignette {
+    position: absolute; right: 6px; bottom: 0; height: 100%; width: auto;
+    object-fit: contain; object-position: bottom right;
+    filter: drop-shadow(-3px 2px 6px rgba(0,0,0,0.5));
+    pointer-events: none;
+  }
+  .menu-scroll {
+    flex: 1; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+  }
+  .back-btn {
+    font-family: var(--font-head); font-size: 0.72rem; letter-spacing: 0.04em;
+    background: transparent; border: 1px solid var(--wall); color: var(--text-dim);
+    padding: 5px 10px; border-radius: 4px; cursor: pointer;
+  }
+  .level-list { display: flex; flex-direction: column; gap: 10px; }
+  .level-card {
+    background: var(--panel); border: 1px solid var(--wall); border-radius: 6px;
+    padding: 12px 14px; cursor: pointer; text-align: left;
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .level-card:active { border-color: var(--amber); }
+  .level-card .lc-title { font-family: var(--font-head); font-size: 0.95rem; color: var(--text); }
+  .level-card .lc-sub { font-size: 0.7rem; color: var(--text-dim); margin-top: 2px; }
+  .level-card .lc-score { font-family: var(--font-head); font-size: 0.85rem; color: var(--amber); text-align: right; }
+  .level-card .lc-score .lbl { display: block; font-size: 0.6rem; color: var(--text-dim); font-family: var(--font-body); }
+  .level-card.locked { opacity: 0.55; }
+  .level-card.locked .lc-title { color: var(--text-dim); }
+  .level-card.locked:active { border-color: var(--wall); }
+  .best-score { font-size: 0.78rem; color: var(--ok); margin-bottom: 4px; min-height: 16px; }
+
+  .skins-section { margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--wall); }
+  .skins-section-top { margin-top: 0; padding-top: 0; border-top: none; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--wall); }
+  .knife-progress-card { display: flex; align-items: center; gap: 12px; background: var(--panel-2); border: 1px solid var(--wall); border-radius: 10px; padding: 10px 12px; margin-bottom: 16px; }
+  .knife-progress-img { width: 44px; height: 44px; border-radius: 8px; object-fit: cover; flex-shrink: 0; background: var(--panel); }
+  .knife-progress-body { flex: 1; min-width: 0; }
+  .knife-progress-top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+  .knife-progress-name { font-size: 0.85rem; font-weight: 600; color: var(--amber); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .knife-progress-tier { font-size: 0.7rem; color: var(--text-dim); white-space: nowrap; }
+  .knife-progress-bar-track { height: 6px; background: var(--panel); border-radius: 3px; margin-top: 6px; overflow: hidden; }
+  .knife-progress-bar-fill { height: 100%; background: var(--amber); border-radius: 3px; }
+  .knife-progress-sub { font-size: 0.7rem; color: var(--text-dim); margin-top: 5px; }
+  .skins-header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; }
+  .ads-count { font-size: 0.68rem; color: var(--text-dim); }
+  .skin-track { display: flex; gap: 6px; margin-bottom: 10px; }
+  .skin-chip {
+    flex: 1; text-align: center; padding: 6px 2px; border-radius: 5px; border: 1.5px solid var(--wall);
+    background: var(--panel); font-size: 0.6rem; color: var(--text-dim);
+  }
+  .skin-chip .sc-name { font-family: var(--font-head); font-weight: 700; font-size: 0.66rem; }
+  .skin-chip .sc-req { font-size: 0.56rem; margin-top: 1px; }
+  .skin-chip .sc-img {
+    width: 100%; aspect-ratio: 1.4; object-fit: contain; display: block; margin-bottom: 2px;
+    filter: brightness(0.35) saturate(0); transition: filter 0.2s ease;
+  }
+  .skin-chip.unlocked { border-color: var(--amber); background: var(--panel-2); color: var(--text); }
+  .skin-chip.unlocked .sc-img { filter: none; }
+  .skin-chip.unlocked .sc-name { color: var(--amber); }
+  .watch-ad-btn { width: 100%; border-color: var(--squad-b); color: var(--squad-b); }
+  .watch-ad-btn:disabled { opacity: 0.6; }
+  .toast {
+    position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%) translateY(20px);
+    background: var(--panel-2); border: 1px solid var(--amber); color: var(--text);
+    padding: 10px 16px; border-radius: 6px; font-size: 0.8rem; opacity: 0;
+    transition: opacity 0.25s ease, transform 0.25s ease; pointer-events: none; z-index: 20;
+    text-align: center; max-width: 90%;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  #next-room-btn, #next-level-btn { background: var(--amber); color: #2a2410; border-color: var(--amber); }
+
+  .celebration-card {
+    background: var(--panel); border: 2px solid var(--amber); border-radius: 10px;
+    padding: 26px 22px; max-width: 340px; width: 100%; text-align: center;
+    animation: celebPop 0.4s cubic-bezier(0.2, 0.8, 0.3, 1.2);
+  }
+  @keyframes celebPop {
+    0% { transform: scale(0.6); opacity: 0; }
+    100% { transform: scale(1); opacity: 1; }
+  }
+  .celebration-label {
+    font-family: var(--font-head); font-size: 0.8rem; letter-spacing: 0.08em;
+    color: var(--amber); text-transform: uppercase; margin-bottom: 10px;
+  }
+  .celebration-img {
+    width: 100%; max-height: 180px; object-fit: contain; margin-bottom: 14px;
+    filter: drop-shadow(0 4px 14px rgba(201,162,74,0.35));
+  }
+  .celebration-title {
+    font-family: var(--font-head); font-size: 1.4rem; font-weight: 700; color: var(--text);
+    margin-bottom: 4px;
+  }
+  .celebration-sub {
+    font-size: 0.8rem; color: var(--text-dim); margin-bottom: 16px; line-height: 1.4;
+  }
+</style>
+<!--
+  Chargés sans condition : inoffensifs en dehors de Telegram (ces scripts ne
+  font simplement rien si window.Telegram/window.Adsgram/window.initCdTma ne
+  sont jamais utilisés). Rien ne change pour un joueur sur Google Play/navigateur normal.
+-->
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<script src="https://sad.adsgram.ai/js/sad.min.js"></script>
+<script src="https://js.onclckvd.com/in-stream-ad-admanager/tma.js"></script>
+<!--
+  Monetag : remplacer cette ligne au complet par le tag <script> exact fourni
+  par le tableau de bord Monetag (section "Getting SDK tag"), une fois le
+  compte créé et une zone Rewarded Interstitial obtenue. Le tag ressemble à :
+  <script src="https://VRAI_DOMAINE/sdk.js" data-zone="TON_ZONE_ID" data-sdk="show_TON_ZONE_ID"></script>
+  Le nom de fonction généré (data-sdk="...") doit ensuite être reporté dans
+  MONETAG_SHOW_FN plus bas dans le fichier.
+-->
+</head>
+<body>
+<div class="app" id="app">
+
+  <!-- MENU SCREEN -->
+  <div id="menu-screen">
+    <header>
+      <h1>Breach<span>Six</span></h1>
+      <span class="mission-tag" data-i18n="gameSubtitle">Escouade tactique</span>
+    </header>
+    <div class="lang-switcher" style="display:flex; flex-wrap:wrap; gap:5px; margin-bottom:10px;">
+      <button class="lang-btn active" data-lang="fr" style="flex:1 1 18%;">FR</button>
+      <button class="lang-btn" data-lang="en" style="flex:1 1 18%;">EN</button>
+      <button class="lang-btn" data-lang="es" style="flex:1 1 18%;">ES</button>
+      <button class="lang-btn" data-lang="ptbr" style="flex:1 1 18%;">PT-BR</button>
+      <button class="lang-btn" data-lang="de" style="flex:1 1 18%;">DE</button>
+      <button class="lang-btn" data-lang="it" style="flex:1 1 18%;">IT</button>
+      <button class="lang-btn" data-lang="ru" style="flex:1 1 18%;">RU</button>
+      <button class="lang-btn" data-lang="ja" style="flex:1 1 18%;">JA</button>
+      <button class="lang-btn" data-lang="ko" style="flex:1 1 18%;">KO</button>
+      <button class="lang-btn" data-lang="zh" style="flex:1 1 18%;">ZH</button>
+    </div>
+    <div class="menu-scroll">
+      <div class="skins-section skins-section-top">
+        <div class="skins-header">
+          <span class="squad-title" data-i18n="weaponSkins" style="color:var(--amber);">Skins d'armes</span>
+          <span class="ads-count" id="ads-count">0 pub visionnée</span>
+        </div>
+        <div class="skin-track" id="skin-track"></div>
+        <button class="compose-btn watch-ad-btn" id="watch-ad-btn" data-i18n="watchAdBtn">▶ Regarder une pub optionnelle</button>
+      </div>
+
+      <div class="knife-progress-card" id="knife-progress-card">
+        <img class="knife-progress-img" id="knife-progress-img" src="" alt="">
+        <div class="knife-progress-body">
+          <div class="knife-progress-top">
+            <span class="knife-progress-name" id="knife-progress-name">—</span>
+            <span class="knife-progress-tier" id="knife-progress-tier">—</span>
+          </div>
+          <div class="knife-progress-bar-track">
+            <div class="knife-progress-bar-fill" id="knife-progress-bar-fill" style="width:0%;"></div>
+          </div>
+          <div class="knife-progress-sub" id="knife-progress-sub">—</div>
+        </div>
+      </div>
+
+      <button class="compose-btn" id="menu-compose-btn" data-i18n="composeSquads" style="width:100%; margin-bottom:16px;">Composer les escouades</button>
+
+      <div class="brief" style="margin-bottom:14px;">
+        Choisis une mission. Ta composition d'escouade reste la même d'une mission à l'autre.
+      </div>
+      <div class="level-list" id="level-list"></div>
+
+      <div class="skins-section">
+        <div class="skins-header">
+          <span class="squad-title" data-i18n="accessibility" style="color:var(--amber);">Accessibilité</span>
+        </div>
+        <div style="display:flex; gap:8px;">
+          <button class="compose-btn" id="colorblind-btn" data-i18n="colorblindMode" style="flex:1;">Mode daltonien</button>
+          <button class="compose-btn" id="large-text-btn" data-i18n="largeTextMode" style="flex:1;">Texte agrandi</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- BRIEFING SCREEN -->
+  <div id="briefing-screen" style="display:none;">
+    <header>
+      <button class="back-btn" id="briefing-back-btn" data-i18n="backToMenuShort">← Menu</button>
+    </header>
+    <div class="briefing-image-wrap">
+      <img id="briefing-image" src="" alt="">
+      <img class="briefing-unit-logo" src="./unit-logo.jpg" alt="">
+      <img id="briefing-operator" class="briefing-operator-vignette" src="" alt="">
+    </div>
+    <div class="mission-tag" id="briefing-title" style="margin-bottom:8px;"></div>
+    <div class="brief" id="briefing-text" style="max-height:40%; overflow-y:auto; margin-bottom:10px;"></div>
+    <div class="briefing-enemy-wrap">
+      <img class="briefing-faction-logo" src="./faction-logo.jpg" alt="">
+      <img id="briefing-enemy-img" src="" alt="">
+    </div>
+    <button class="go-btn ready" id="briefing-start-btn" data-i18n="launchMissionBtn" style="margin-top:auto;">LANCER LA MISSION →</button>
+  </div>
+
+  <!-- MISSION SCREEN -->
+  <div id="mission-screen" style="display:none;">
+    <header>
+      <button class="back-btn" id="back-btn" data-i18n="backToMenuShort">← Menu</button>
+      <button class="compose-btn" id="compose-btn" data-i18n="compose">Composer</button>
+    </header>
+    <div class="mission-tag" id="mission-tag">Niveau 1 · Résidence · Jour · 5 points d'entrée</div>
+
+    <div class="brief">
+      <strong data-i18n="objectiveLabel">Objectif :</strong> <span id="brief-objective">neutraliser la menace et libérer l'otage.</span>
+      <span data-i18n="missionInstructions">Sélectionne un opérateur, puis touche un point d'entrée pour l'assigner — tu peux en assigner plusieurs au même point. Touche un point sans opérateur sélectionné pour en retirer un.</span>
+    </div>
+
+    <div class="room-wrap">
+      <svg viewBox="-16 -16 332 332" id="room-svg">
+        <g id="floor-walls-g">
+        <!-- floor -->
+        <rect x="20" y="20" width="260" height="260" fill="var(--floor)" rx="2"/>
+        <!-- walls -->
+        <rect x="20" y="20" width="260" height="260" fill="none" stroke="var(--wall)" stroke-width="6" rx="2"/>
+        <!-- interior clutter -->
+        <rect x="60" y="60" width="40" height="18" fill="var(--wall)"/>
+        <rect x="245" y="245" width="25" height="25" fill="var(--wall)"/>
+        </g>
+
+        <!-- Threat 1: standard guard -->
+        <g id="t1-g">
+          <circle class="threat-pulse enemy-body" cx="175" cy="85" r="9" fill="var(--enemy)" stroke="var(--enemy-dark)" stroke-width="1.5"/>
+          <circle class="enemy-helmet" cx="175" cy="79" r="4" fill="var(--enemy-dark)"/>
+          <rect class="enemy-weapon" x="173.7" y="69" width="2.6" height="7" fill="var(--enemy-dark)"/>
+          <g class="sniper-mark" style="display:none;">
+            <circle cx="175" cy="66" r="4" fill="none" stroke="var(--danger)" stroke-width="1.3"/>
+            <line x1="175" y1="61" x2="175" y2="71" stroke="var(--danger)" stroke-width="1"/>
+            <line x1="170" y1="66" x2="180" y2="66" stroke="var(--danger)" stroke-width="1"/>
+          </g>
+        </g>
+
+        <!-- Threat 2: armored guard holding hostage as shield -->
+        <g id="t2-g">
+          <polygon class="threat-pulse enemy-body" points="115,193 124,198 124,210 115,217 106,210 106,198"
+            fill="var(--enemy)" stroke="var(--enemy-dark)" stroke-width="2"/>
+          <circle class="enemy-helmet" cx="115" cy="188" r="4.2" fill="var(--enemy-dark)"/>
+          <rect class="enemy-weapon" x="113.7" y="177" width="2.6" height="7" fill="var(--enemy-dark)"/>
+          <circle class="hostage-mark" cx="132" cy="214" r="6.5" fill="#c9c4b0" stroke="#7d7863" stroke-width="1.2"/>
+          <line class="hostage-line" x1="132" y1="219" x2="132" y2="226" stroke="#c9c4b0" stroke-width="2" stroke-linecap="round"/>
+        </g>
+
+        <!-- Threat 3: second standard guard, added to force squad-splitting on tougher rooms -->
+        <g id="t3-g" style="display:none;">
+          <circle class="threat-pulse enemy-body" cx="230" cy="150" r="9" fill="var(--enemy)" stroke="var(--enemy-dark)" stroke-width="1.5"/>
+          <circle class="enemy-helmet" cx="230" cy="144" r="4" fill="var(--enemy-dark)"/>
+          <rect class="enemy-weapon" x="228.7" y="134" width="2.6" height="7" fill="var(--enemy-dark)"/>
+          <g class="sniper-mark" style="display:none;">
+            <circle cx="230" cy="131" r="4" fill="none" stroke="var(--danger)" stroke-width="1.3"/>
+            <line x1="230" y1="126" x2="230" y2="136" stroke="var(--danger)" stroke-width="1"/>
+            <line x1="225" y1="131" x2="235" y2="131" stroke="var(--danger)" stroke-width="1"/>
+          </g>
+        </g>
+
+        <!-- Threats 4-6: additional standard guards for tougher, more crowded rooms -->
+        <g id="t4-g" style="display:none;">
+          <circle class="threat-pulse enemy-body" cx="150" cy="235" r="9" fill="var(--enemy)" stroke="var(--enemy-dark)" stroke-width="1.5"/>
+          <circle class="enemy-helmet" cx="150" cy="229" r="4" fill="var(--enemy-dark)"/>
+          <rect class="enemy-weapon" x="148.7" y="219" width="2.6" height="7" fill="var(--enemy-dark)"/>
+          <g class="sniper-mark" style="display:none;">
+            <circle cx="150" cy="216" r="4" fill="none" stroke="var(--danger)" stroke-width="1.3"/>
+            <line x1="150" y1="211" x2="150" y2="221" stroke="var(--danger)" stroke-width="1"/>
+            <line x1="145" y1="216" x2="155" y2="216" stroke="var(--danger)" stroke-width="1"/>
+          </g>
+        </g>
+        <g id="t5-g" style="display:none;">
+          <circle class="threat-pulse enemy-body" cx="70" cy="150" r="9" fill="var(--enemy)" stroke="var(--enemy-dark)" stroke-width="1.5"/>
+          <circle class="enemy-helmet" cx="70" cy="144" r="4" fill="var(--enemy-dark)"/>
+          <rect class="enemy-weapon" x="68.7" y="134" width="2.6" height="7" fill="var(--enemy-dark)"/>
+          <g class="sniper-mark" style="display:none;">
+            <circle cx="70" cy="131" r="4" fill="none" stroke="var(--danger)" stroke-width="1.3"/>
+            <line x1="70" y1="126" x2="70" y2="136" stroke="var(--danger)" stroke-width="1"/>
+            <line x1="65" y1="131" x2="75" y2="131" stroke="var(--danger)" stroke-width="1"/>
+          </g>
+        </g>
+        <g id="t6-g" style="display:none;">
+          <circle class="threat-pulse enemy-body" cx="75" cy="215" r="9" fill="var(--enemy)" stroke="var(--enemy-dark)" stroke-width="1.5"/>
+          <circle class="enemy-helmet" cx="75" cy="209" r="4" fill="var(--enemy-dark)"/>
+          <rect class="enemy-weapon" x="73.7" y="199" width="2.6" height="7" fill="var(--enemy-dark)"/>
+          <g class="sniper-mark" style="display:none;">
+            <circle cx="75" cy="196" r="4" fill="none" stroke="var(--danger)" stroke-width="1.3"/>
+            <line x1="75" y1="191" x2="75" y2="201" stroke="var(--danger)" stroke-width="1"/>
+            <line x1="70" y1="196" x2="80" y2="196" stroke="var(--danger)" stroke-width="1"/>
+          </g>
+        </g>
+
+        <!-- Threat 3: bomb with a defusal timer -->
+        <g id="bomb-g" style="display:none;">
+          <rect x="160" y="70" width="30" height="30" rx="4" fill="#3a1a12" stroke="var(--danger)" stroke-width="2"/>
+          <circle cx="175" cy="70" r="4" fill="var(--danger)"/>
+          <line x1="175" y1="66" x2="179" y2="58" stroke="var(--danger)" stroke-width="2" stroke-linecap="round"/>
+          <text x="175" y="72" class="door-label" fill="var(--text)" style="font-size:11px;">✕</text>
+          <text x="175" y="115" class="door-label" fill="var(--danger)">BOMBE</text>
+          <rect x="135" y="122" width="80" height="6" rx="3" fill="#2a2410" stroke="var(--wall)" stroke-width="1"/>
+          <rect id="bomb-timer-fill" x="135" y="122" width="80" height="6" rx="3" fill="var(--danger)"/>
+        </g>
+
+        <!-- doors: N, NE, E, S, W -->
+        <!-- North -->
+        <g class="door" data-door="N" data-x="150" data-y="20">
+          <circle class="door-ring door-hit" cx="150" cy="20" r="12" fill="var(--panel)" stroke="var(--amber-dim)" stroke-width="2"/>
+          <text x="150" y="24" class="door-count" text-anchor="middle"></text>
+        </g>
+        <!-- Northeast -->
+        <g class="door" data-door="NE" data-x="280" data-y="80">
+          <circle class="door-ring door-hit" cx="280" cy="80" r="12" fill="var(--panel)" stroke="var(--amber-dim)" stroke-width="2"/>
+          <text x="280" y="84" class="door-count" text-anchor="middle"></text>
+        </g>
+        <!-- East -->
+        <g class="door" data-door="E" data-x="280" data-y="220">
+          <circle class="door-ring door-hit" cx="280" cy="220" r="12" fill="var(--panel)" stroke="var(--amber-dim)" stroke-width="2"/>
+          <text x="280" y="224" class="door-count" text-anchor="middle"></text>
+        </g>
+        <!-- South -->
+        <g class="door" data-door="S" data-x="150" data-y="280">
+          <circle class="door-ring door-hit" cx="150" cy="280" r="12" fill="var(--panel)" stroke="var(--amber-dim)" stroke-width="2"/>
+          <text x="150" y="284" class="door-count" text-anchor="middle"></text>
+        </g>
+        <!-- West -->
+        <g class="door" data-door="W" data-x="20" data-y="150">
+          <circle class="door-ring door-hit" cx="20" cy="150" r="12" fill="var(--panel)" stroke="var(--amber-dim)" stroke-width="2"/>
+          <text x="20" y="154" class="door-count" text-anchor="middle"></text>
+        </g>
+        <!-- Window (alternate access, favors Light) -->
+        <g class="door" data-door="F" data-x="20" data-y="220">
+          <rect class="door-ring door-hit" x="8" y="208" width="24" height="24" rx="2" fill="var(--panel)" stroke="var(--amber-dim)" stroke-width="2"/>
+          <line x1="20" y1="208" x2="20" y2="232" stroke="var(--amber-dim)" stroke-width="1.5"/>
+          <line x1="8" y1="220" x2="32" y2="220" stroke="var(--amber-dim)" stroke-width="1.5"/>
+          <text x="20" y="224" class="door-count" text-anchor="middle"></text>
+        </g>
+      </svg>
+    </div>
+
+    <div class="legend">
+      <span class="legend-item"><span class="legend-swatch legend-op"></span><span data-i18n="operatorLegend">Opérateur</span></span>
+      <span class="legend-item">
+        <svg class="legend-icon" viewBox="-7 -7 14 14" width="11" height="11" aria-hidden="true"><circle cx="0" cy="0" r="6" fill="var(--enemy)" stroke="var(--enemy-dark)" stroke-width="1"/></svg>
+        <span data-i18n="enemyGuardLegend">Garde ennemi</span>
+      </span>
+      <span class="legend-item">
+        <svg class="legend-icon" viewBox="-9 -12 18 24" width="11" height="14" aria-hidden="true"><polygon points="0,-12 9,-7 9,5 0,12 -9,5 -9,-7" fill="var(--enemy)" stroke="var(--enemy-dark)" stroke-width="1.5"/></svg>
+        <span data-i18n="armoredGuardLegend">Garde blindé</span>
+      </span>
+      <span class="legend-item">
+        <svg class="legend-icon" viewBox="-7 -7 14 14" width="11" height="11" aria-hidden="true"><circle cx="0" cy="0" r="6" fill="var(--enemy)" stroke="var(--enemy-dark)" stroke-width="1"/><circle cx="0" cy="0" r="5.2" fill="none" stroke="var(--danger)" stroke-width="1.3"/></svg>
+        <span data-i18n="sniperLegend">Tireur d'élite (Shadow exposé)</span>
+      </span>
+      <span class="legend-item"><span class="legend-swatch legend-hostage"></span><span data-i18n="hostageLegend">Otage</span></span>
+      <span class="legend-item"><span class="legend-swatch legend-bomb"></span><span data-i18n="bombLegend">Bombe</span></span>
+    </div>
+
+    <div class="hint" id="hint" data-i18n="selectOperatorHint">Sélectionne un opérateur pour commencer.</div>
+
+    <div class="roster">
+      <div class="squad-row">
+        <div class="squad-title a" data-i18n="squadA">Escouade A</div>
+        <div class="chips" id="squad-a"></div>
+      </div>
+      <div class="squad-row">
+        <div class="squad-title b" data-i18n="squadB">Escouade B</div>
+        <div class="chips" id="squad-b"></div>
+      </div>
+    </div>
+
+    <button class="go-btn" id="go-btn" data-i18n="goAssaultBtn" disabled>GO — LANCER L'ASSAUT</button>
+  </div>
+
+</div>
+
+<div class="overlay" id="overlay">
+  <div class="result-card">
+    <h2 id="result-title">Mission réussie</h2>
+    <div class="score" id="result-score">1000</div>
+    <div class="best-score" id="best-score-note"></div>
+    <ul class="obj-list" id="obj-list"></ul>
+    <button class="replay-btn" id="next-room-btn" data-i18n="nextRoom" style="display:none;">Pièce suivante →</button>
+    <button class="replay-btn" id="next-level-btn" data-i18n="nextLevel" style="display:none;">Niveau suivant →</button>
+    <button class="replay-btn" id="replay-btn" data-i18n="replayRoom">Rejouer la pièce</button>
+    <button class="replay-btn" id="menu-return-btn" data-i18n="backToMenu" style="margin-top:8px;">Retour au menu</button>
+  </div>
+</div>
+
+<div class="overlay" id="celebration-overlay">
+  <div class="celebration-card">
+    <div class="celebration-label" id="celebration-label">Skin débloqué !</div>
+    <img class="celebration-img" id="celebration-img" src="" alt="">
+    <div class="celebration-title" id="celebration-title">Cuivre</div>
+    <div class="celebration-sub" id="celebration-sub"></div>
+    <button class="replay-btn" id="celebration-close-btn">Continuer</button>
+  </div>
+</div>
+
+<div class="overlay" id="skin-preview-overlay">
+  <div class="celebration-card">
+    <img class="celebration-img" id="skin-preview-img" src="" alt="">
+    <div class="celebration-title" id="skin-preview-title">Cuivre</div>
+    <div class="celebration-sub" id="skin-preview-status"></div>
+    <button class="replay-btn" id="skin-preview-close-btn" data-i18n="closeBtn">Fermer</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+function bootGame() {
+  // --- Internationalisation (architecture) ---
+  // Portée actuelle : tout le texte statique de l'interface (menu, légende,
+  // écran de résultat, accessibilité). Le contenu des 150 niveaux (nom,
+  // sous-titre, texte de briefing) et certains messages assemblés
+  // dynamiquement en cours de mission restent en français pour l'instant,
+  // quelle que soit la langue choisie — c'est le prochain chantier.
+  let currentLang = 'fr';
+  try { currentLang = localStorage.getItem('deadsector-lang') || 'fr'; } catch (e) {}
+
+  const STRINGS = {
+    fr: {
+      tagline: 'Unité tactique',
+      composeSquads: 'Composer les escouades',
+      accessibility: 'Accessibilité',
+      colorblindMode: 'Mode daltonien',
+      largeTextMode: 'Texte agrandi',
+      weaponSkins: "Skins d'armes",
+      compose: 'Composer',
+      objectiveLabel: 'Objectif :',
+      operatorLegend: 'Opérateur',
+      hostageLegend: 'Survivant',
+      bombLegend: 'Générateur',
+      enemyGuardLegend: 'Infecté',
+      armoredGuardLegend: 'Infecté blindé',
+      sniperLegend: "Infecté vigie (Shadow exposé)",
+      selectOperatorHint: 'Sélectionne un opérateur pour commencer.',
+      squadA: 'Escouade A',
+      squadB: 'Escouade B',
+      missionSuccess: 'Mission réussie',
+      nextRoom: 'Pièce suivante →',
+      nextLevel: 'Niveau suivant →',
+      replayRoom: 'Rejouer la pièce',
+      replayLevel: 'Rejouer le niveau',
+      backToMenu: 'Retour au menu',
+      skinUnlocked: 'Skin débloqué !',
+      hintChangeClass: 'Touche un opérateur pour changer sa classe.',
+      hintOperatorRemovedContinue: 'Opérateur retiré. Sélectionne un opérateur pour continuer.',
+      hintAssigned: 'Assigné. Tu peux ajouter un autre opérateur au même point, ou toucher GO.',
+      hintOperatorRemovedFromDoor: 'Opérateur retiré du point d\'entrée.',
+      hintSelectFirst: 'Sélectionne d\'abord un opérateur ci-dessous.',
+      levelLockedLabel: 'Verrouillé',
+      levelLockedToast: 'Termine le niveau précédent pour déverrouiller celui-ci.',
+      knifeBaseLabel: 'Couteau standard',
+      tierName1: 'Tissu de Fortune',
+      tierName2: 'Urbain Rayé',
+      tierName3: 'Fil de Fer et Clous',
+      tierName4: 'Tactique Numérique',
+      tierName5: 'Sang Séché',
+      tierName6: 'Peau de Prédateur',
+      tierName7: 'Acier de Damas Post-Apo',
+      tierName8: 'Gardien des Cendres',
+      tierName9: 'Or de Récupération',
+      tierName10: 'Obsidienne Infectée',
+      knifeTierWord: 'Palier',
+      knifeReachedSuffix: ' atteint !',
+      knifeLevelsCompletedSuffix: ' niveaux complétés',
+      knifeUnlockedSuffix: ' débloqué.',
+      knifeProgressToNextSuffix: ' niveaux vers le prochain palier',
+      missionFailedTitle: 'Mission échouée',
+      bombExplodedTitle: 'La bombe a explosé',
+      ptsUnit: 'pts',
+      bombNotSentMsg: 'Personne n\'a été envoyé stabiliser le générateur',
+      bombTooSlowMsg: 'Le générateur a lâché avant d\'être stabilisé — les opérateurs envoyés étaient trop lents',
+      guardT1Msg: 'L\'infecté n\'a pas été neutralisé (aucun opérateur envoyé de ce côté)',
+      armoredGuardMsg: 'L\'infecté blindé n\'a pas été neutralisé (aucun opérateur envoyé de ce côté)',
+      secondGuardMsg: 'Un second infecté n\'a pas été neutralisé (aucun opérateur envoyé de ce côté)',
+      guardOtherMsg: 'Un infecté n\'a pas été neutralisé (aucun opérateur envoyé de ce côté)',
+      noOperatorLostLabel: 'Aucun opérateur perdu',
+      noShotsFiredLabel: 'Aucun coup de feu tiré (approche furtive)',
+      bombFastDefuseLabel: 'Stabilisation rapide et maîtrisée (marge de sécurité)',
+      hostageSafeLabel: 'Survivant exfiltré sans blessure',
+      hostageInjuredLabel: 'Survivant blessé dans l\'échange de tirs',
+      levelCompletedTitle: 'Niveau complété',
+      missionSuccessTitle: 'Mission réussie',
+      newBestScoreLabel: 'Nouveau meilleur score !',
+      replayLevel: 'Rejouer le niveau',
+      gameSubtitle: 'Zone de contamination',
+      backToMenuShort: '← Menu',
+      launchMissionBtn: 'LANCER LA MISSION →',
+      goAssaultBtn: 'GO — LANCER L\'ASSAUT',
+      dayLabel: 'Jour',
+      nightLabel: 'Nuit',
+      roomLabel: 'Pièce',
+      entryPointsLabel: 'points d\'entrée',
+      levelLabel: 'Niveau',
+      objectiveBomb: 'stabiliser le générateur avant la défaillance — la vitesse de l\'opérateur compte plus que sa classe.',
+      objectiveHostage: 'neutraliser la menace et exfiltrer le survivant.',
+      objectiveNeutralize: 'neutraliser la menace.',
+      missionInstructions: 'Sélectionne un opérateur, puis touche un point d\'entrée pour l\'assigner — tu peux en assigner plusieurs au même point. Touche un point sans opérateur sélectionné pour en retirer un.',
+      skinFortune: 'Marquages de fortune',
+      skinCamouflage: 'Camouflage récupéré',
+      skinBlindage: 'Blindage de fortune',
+      skinMacabre: 'Trophées macabres',
+      skinPatine: 'Patine de guerre',
+      skinDore: 'Butin doré',
+      watchAdBtn: '▶ Regarder une pub optionnelle',
+      watchAdBtnLoading: 'Pub en cours…',
+      adUnlockedLabel: 'Débloqué',
+      adsReqUnit: 'pubs',
+      adsWatchedSingular: ' pub visionnée',
+      adsWatchedPlural: ' pubs visionnées',
+      adFailedMsg: 'Pub non complétée — réessaie pour débloquer un skin.',
+      adWatchedToastPrefix: 'Pub visionnée (',
+      closeBtn: 'Fermer',
+      lockedLabel: 'Verrouillé',
+      adSkinAvailableSub: 'Ce skin d\'arme est maintenant disponible.',
+      continueBtn: 'Continuer',
+      bestScore: 'Meilleur score',
+      roomSecured: 'Pièce sécurisée',
+      newBestScore: 'Nouveau meilleur score !',
+    },
+    en: {
+      tagline: 'Tactical Unit',
+      composeSquads: 'Build your squads',
+      accessibility: 'Accessibility',
+      colorblindMode: 'Colorblind mode',
+      largeTextMode: 'Large text',
+      weaponSkins: 'Weapon skins',
+      compose: 'Build squad',
+      objectiveLabel: 'Objective:',
+      operatorLegend: 'Operator',
+      hostageLegend: 'Hostage',
+      bombLegend: 'Bomb',
+      enemyGuardLegend: 'Enemy guard',
+      armoredGuardLegend: 'Armored guard',
+      sniperLegend: 'Marksman (Shadow exposed)',
+      selectOperatorHint: 'Select an operator to begin.',
+      squadA: 'Squad A',
+      squadB: 'Squad B',
+      missionSuccess: 'Mission successful',
+      nextRoom: 'Next room →',
+      nextLevel: 'Next level →',
+      replayRoom: 'Replay room',
+      replayLevel: 'Replay level',
+      backToMenu: 'Back to menu',
+      skinUnlocked: 'Skin unlocked!',
+      hintChangeClass: 'Tap an operator to change their class.',
+      hintOperatorRemovedContinue: 'Operator removed. Select an operator to continue.',
+      hintAssigned: 'Assigned. You can add another operator to the same point, or tap GO.',
+      hintOperatorRemovedFromDoor: 'Operator removed from the entry point.',
+      hintSelectFirst: 'Select an operator below first.',
+      levelLockedLabel: 'Locked',
+      levelLockedToast: 'Complete the previous level to unlock this one.',
+      knifeBaseLabel: 'Standard karambit',
+      tierName1: 'Brushed steel',
+      tierName2: 'Tactical black',
+      tierName3: 'Copper',
+      tierName4: 'Antique bronze',
+      tierName5: 'Silver',
+      tierName6: 'Gold',
+      tierName7: 'Mother of pearl',
+      tierName8: 'Platinum',
+      tierName9: 'Cut diamond',
+      tierName10: 'Rainbow damascus',
+      knifeTierWord: 'Tier',
+      knifeReachedSuffix: ' reached!',
+      knifeLevelsCompletedSuffix: ' levels completed',
+      knifeUnlockedSuffix: ' unlocked.',
+      knifeProgressToNextSuffix: ' levels to the next tier',
+      missionFailedTitle: 'Mission failed',
+      bombExplodedTitle: 'The bomb exploded',
+      ptsUnit: 'pts',
+      bombNotSentMsg: 'No one was sent to defuse the bomb',
+      bombTooSlowMsg: 'The bomb exploded before being defused — the operators sent were too slow',
+      guardT1Msg: 'The guard was not neutralized (no operator sent to that side)',
+      armoredGuardMsg: 'The armored guard was not neutralized (no operator sent to that side)',
+      secondGuardMsg: 'A second guard was not neutralized (no operator sent to that side)',
+      guardOtherMsg: 'A guard was not neutralized (no operator sent to that side)',
+      noOperatorLostLabel: 'No operator lost',
+      noShotsFiredLabel: 'No shots fired (stealth approach)',
+      bombFastDefuseLabel: 'Fast, controlled defusal (safety margin)',
+      hostageSafeLabel: 'Hostage freed unharmed',
+      hostageInjuredLabel: 'Hostage injured in the crossfire',
+      levelCompletedTitle: 'Level completed',
+      missionSuccessTitle: 'Mission successful',
+      newBestScoreLabel: 'New best score!',
+      replayLevel: 'Replay level',
+      gameSubtitle: 'Tactical Squad',
+      backToMenuShort: '← Menu',
+      launchMissionBtn: 'LAUNCH MISSION →',
+      goAssaultBtn: 'GO — LAUNCH ASSAULT',
+      dayLabel: 'Day',
+      nightLabel: 'Night',
+      roomLabel: 'Room',
+      entryPointsLabel: 'entry points',
+      levelLabel: 'Level',
+      objectiveBomb: 'defuse the bomb before it explodes — the operator\'s speed matters more than their class.',
+      objectiveHostage: 'neutralize the threat and free the hostage.',
+      objectiveNeutralize: 'neutralize the threat.',
+      missionInstructions: 'Select an operator, then tap an entry point to assign them — you can assign several to the same point. Tap a point with no operator selected to remove one.',
+      skinCuivre: 'Copper',
+      skinArgent: 'Silver',
+      skinOr: 'Gold',
+      skinDamas: 'Damascus',
+      skinPlatine: 'Platinum',
+      skinDiamant: 'Diamond',
+      watchAdBtn: '▶ Watch an optional ad',
+      watchAdBtnLoading: 'Ad playing…',
+      adUnlockedLabel: 'Unlocked',
+      adsReqUnit: 'ads',
+      adsWatchedSingular: ' ad watched',
+      adsWatchedPlural: ' ads watched',
+      adFailedMsg: 'Ad not completed — try again to unlock a skin.',
+      adWatchedToastPrefix: 'Ad watched (',
+      closeBtn: 'Close',
+      lockedLabel: 'Locked',
+      adSkinAvailableSub: 'This weapon skin is now available.',
+      continueBtn: 'Continue',
+      bestScore: 'Best score',
+      roomSecured: 'Room secured',
+      newBestScore: 'New best score!',
+    },
+    es: {
+      tagline: 'Unidad táctica',
+      composeSquads: 'Formar los escuadrones',
+      accessibility: 'Accesibilidad',
+      colorblindMode: 'Modo daltónico',
+      largeTextMode: 'Texto grande',
+      weaponSkins: 'Skins de armas',
+      compose: 'Formar escuadrón',
+      objectiveLabel: 'Objetivo:',
+      operatorLegend: 'Operador',
+      hostageLegend: 'Rehén',
+      bombLegend: 'Bomba',
+      enemyGuardLegend: 'Guardia enemigo',
+      armoredGuardLegend: 'Guardia blindado',
+      sniperLegend: 'Francotirador (Shadow expuesto)',
+      selectOperatorHint: 'Selecciona un operador para empezar.',
+      squadA: 'Escuadrón A',
+      squadB: 'Escuadrón B',
+      missionSuccess: 'Misión exitosa',
+      nextRoom: 'Siguiente sala →',
+      nextLevel: 'Siguiente nivel →',
+      replayRoom: 'Repetir sala',
+      replayLevel: 'Repetir nivel',
+      backToMenu: 'Volver al menú',
+      skinUnlocked: '¡Skin desbloqueado!',
+      hintChangeClass: 'Toca un operador para cambiar su clase.',
+      hintOperatorRemovedContinue: 'Operador retirado. Selecciona un operador para continuar.',
+      hintAssigned: 'Asignado. Puedes añadir otro operador al mismo punto, o tocar GO.',
+      hintOperatorRemovedFromDoor: 'Operador retirado del punto de entrada.',
+      hintSelectFirst: 'Selecciona primero un operador abajo.',
+      levelLockedLabel: 'Bloqueado',
+      levelLockedToast: 'Completa el nivel anterior para desbloquear este.',
+      knifeBaseLabel: 'Karambit estándar',
+      tierName1: 'Acero cepillado',
+      tierName2: 'Negro táctico',
+      tierName3: 'Cobre',
+      tierName4: 'Bronce antiguo',
+      tierName5: 'Plata',
+      tierName6: 'Oro',
+      tierName7: 'Nácar',
+      tierName8: 'Platino',
+      tierName9: 'Diamante tallado',
+      tierName10: 'Damasco arcoíris',
+      knifeTierWord: 'Nivel',
+      knifeReachedSuffix: ' alcanzado!',
+      knifeLevelsCompletedSuffix: ' niveles completados',
+      knifeUnlockedSuffix: ' desbloqueado.',
+      knifeProgressToNextSuffix: ' niveles para el próximo nivel',
+      missionFailedTitle: 'Misión fallida',
+      bombExplodedTitle: 'La bomba explotó',
+      ptsUnit: 'pts',
+      bombNotSentMsg: 'Nadie fue enviado a desactivar la bomba',
+      bombTooSlowMsg: 'La bomba explotó antes de ser desactivada — los operadores enviados fueron demasiado lentos',
+      guardT1Msg: 'El guardia no fue neutralizado (ningún operador enviado a ese lado)',
+      armoredGuardMsg: 'El guardia blindado no fue neutralizado (ningún operador enviado a ese lado)',
+      secondGuardMsg: 'Un segundo guardia no fue neutralizado (ningún operador enviado a ese lado)',
+      guardOtherMsg: 'Un guardia no fue neutralizado (ningún operador enviado a ese lado)',
+      noOperatorLostLabel: 'Ningún operador perdido',
+      noShotsFiredLabel: 'Ningún disparo (aproximación sigilosa)',
+      bombFastDefuseLabel: 'Desactivación rápida y controlada (margen de seguridad)',
+      hostageSafeLabel: 'Rehén liberado ileso',
+      hostageInjuredLabel: 'Rehén herido en el intercambio de disparos',
+      levelCompletedTitle: 'Nivel completado',
+      missionSuccessTitle: 'Misión exitosa',
+      newBestScoreLabel: '¡Nuevo mejor puntaje!',
+      replayLevel: 'Rejugar nivel',
+      gameSubtitle: 'Escuadrón táctico',
+      backToMenuShort: '← Menú',
+      launchMissionBtn: 'INICIAR MISIÓN →',
+      goAssaultBtn: 'GO — INICIAR ASALTO',
+      dayLabel: 'Día',
+      nightLabel: 'Noche',
+      roomLabel: 'Sala',
+      entryPointsLabel: 'puntos de entrada',
+      levelLabel: 'Nivel',
+      objectiveBomb: 'desactivar la bomba antes de que explote — la velocidad del operador importa más que su clase.',
+      objectiveHostage: 'neutralizar la amenaza y liberar al rehén.',
+      objectiveNeutralize: 'neutralizar la amenaza.',
+      missionInstructions: 'Selecciona un operador y luego toca un punto de entrada para asignarlo — puedes asignar varios al mismo punto. Toca un punto sin operador seleccionado para retirarlo.',
+      skinCuivre: 'Cobre',
+      skinArgent: 'Plata',
+      skinOr: 'Oro',
+      skinDamas: 'Damasco',
+      skinPlatine: 'Platino',
+      skinDiamant: 'Diamante',
+      watchAdBtn: '▶ Ver un anuncio opcional',
+      watchAdBtnLoading: 'Anuncio en curso…',
+      adUnlockedLabel: 'Desbloqueado',
+      adsReqUnit: 'anuncios',
+      adsWatchedSingular: ' anuncio visto',
+      adsWatchedPlural: ' anuncios vistos',
+      adFailedMsg: 'Anuncio no completado — inténtalo de nuevo para desbloquear un skin.',
+      adWatchedToastPrefix: 'Anuncio visto (',
+      closeBtn: 'Cerrar',
+      lockedLabel: 'Bloqueado',
+      adSkinAvailableSub: 'Este skin de arma ya está disponible.',
+      continueBtn: 'Continuar',
+      bestScore: 'Mejor puntaje',
+      roomSecured: 'Sala asegurada',
+      newBestScore: '¡Nuevo mejor puntaje!',
+    },
+    ptbr: {
+      tagline: 'Unidade tática',
+      composeSquads: 'Montar os esquadrões',
+      accessibility: 'Acessibilidade',
+      colorblindMode: 'Modo daltônico',
+      largeTextMode: 'Texto grande',
+      weaponSkins: 'Skins de armas',
+      compose: 'Montar esquadrão',
+      objectiveLabel: 'Objetivo:',
+      operatorLegend: 'Operador',
+      hostageLegend: 'Refém',
+      bombLegend: 'Bomba',
+      enemyGuardLegend: 'Guarda inimigo',
+      armoredGuardLegend: 'Guarda blindado',
+      sniperLegend: 'Atirador de elite (Shadow exposto)',
+      selectOperatorHint: 'Selecione um operador para começar.',
+      squadA: 'Esquadrão A',
+      squadB: 'Esquadrão B',
+      missionSuccess: 'Missão bem-sucedida',
+      nextRoom: 'Próxima sala →',
+      nextLevel: 'Próximo nível →',
+      replayRoom: 'Repetir sala',
+      replayLevel: 'Repetir nível',
+      backToMenu: 'Voltar ao menu',
+      skinUnlocked: 'Skin desbloqueada!',
+      hintChangeClass: 'Toque em um operador para mudar sua classe.',
+      hintOperatorRemovedContinue: 'Operador removido. Selecione um operador para continuar.',
+      hintAssigned: 'Atribuído. Você pode adicionar outro operador ao mesmo ponto, ou tocar em GO.',
+      hintOperatorRemovedFromDoor: 'Operador removido do ponto de entrada.',
+      hintSelectFirst: 'Selecione primeiro um operador abaixo.',
+      levelLockedLabel: 'Bloqueado',
+      levelLockedToast: 'Conclua o nível anterior para desbloquear este.',
+      knifeBaseLabel: 'Karambit padrão',
+      tierName1: 'Aço escovado',
+      tierName2: 'Preto tático',
+      tierName3: 'Cobre',
+      tierName4: 'Bronze antigo',
+      tierName5: 'Prata',
+      tierName6: 'Ouro',
+      tierName7: 'Madrepérola',
+      tierName8: 'Platina',
+      tierName9: 'Diamante lapidado',
+      tierName10: 'Damasco arco-íris',
+      knifeTierWord: 'Nível',
+      knifeReachedSuffix: ' alcançado!',
+      knifeLevelsCompletedSuffix: ' níveis concluídos',
+      knifeUnlockedSuffix: ' desbloqueada.',
+      knifeProgressToNextSuffix: ' níveis para o próximo nível',
+      missionFailedTitle: 'Missão fracassada',
+      bombExplodedTitle: 'A bomba explodiu',
+      ptsUnit: 'pts',
+      bombNotSentMsg: 'Ninguém foi enviado para desarmar a bomba',
+      bombTooSlowMsg: 'A bomba explodiu antes de ser desarmada — os operadores enviados foram lentos demais',
+      guardT1Msg: 'O guarda não foi neutralizado (nenhum operador enviado para esse lado)',
+      armoredGuardMsg: 'O guarda blindado não foi neutralizado (nenhum operador enviado para esse lado)',
+      secondGuardMsg: 'Um segundo guarda não foi neutralizado (nenhum operador enviado para esse lado)',
+      guardOtherMsg: 'Um guarda não foi neutralizado (nenhum operador enviado para esse lado)',
+      noOperatorLostLabel: 'Nenhum operador perdido',
+      noShotsFiredLabel: 'Nenhum tiro disparado (abordagem furtiva)',
+      bombFastDefuseLabel: 'Desarme rápido e controlado (margem de segurança)',
+      hostageSafeLabel: 'Refém libertado ileso',
+      hostageInjuredLabel: 'Refém ferido na troca de tiros',
+      levelCompletedTitle: 'Nível concluído',
+      missionSuccessTitle: 'Missão bem-sucedida',
+      newBestScoreLabel: 'Nova melhor pontuação!',
+      replayLevel: 'Repetir nível',
+      gameSubtitle: 'Esquadrão tático',
+      backToMenuShort: '← Menu',
+      launchMissionBtn: 'INICIAR MISSÃO →',
+      goAssaultBtn: 'GO — INICIAR ASSALTO',
+      dayLabel: 'Dia',
+      nightLabel: 'Noite',
+      roomLabel: 'Sala',
+      entryPointsLabel: 'pontos de entrada',
+      levelLabel: 'Nível',
+      objectiveBomb: 'desarmar a bomba antes que exploda — a velocidade do operador importa mais que sua classe.',
+      objectiveHostage: 'neutralizar a ameaça e libertar o refém.',
+      objectiveNeutralize: 'neutralizar a ameaça.',
+      missionInstructions: 'Selecione um operador e toque em um ponto de entrada para atribuí-lo — você pode atribuir vários ao mesmo ponto. Toque em um ponto sem operador selecionado para removê-lo.',
+      skinCuivre: 'Cobre',
+      skinArgent: 'Prata',
+      skinOr: 'Ouro',
+      skinDamas: 'Damasco',
+      skinPlatine: 'Platina',
+      skinDiamant: 'Diamante',
+      watchAdBtn: '▶ Assistir a um anúncio opcional',
+      watchAdBtnLoading: 'Anúncio em andamento…',
+      adUnlockedLabel: 'Desbloqueado',
+      adsReqUnit: 'anúncios',
+      adsWatchedSingular: ' anúncio assistido',
+      adsWatchedPlural: ' anúncios assistidos',
+      adFailedMsg: 'Anúncio não concluído — tente novamente para desbloquear uma skin.',
+      adWatchedToastPrefix: 'Anúncio assistido (',
+      closeBtn: 'Fechar',
+      lockedLabel: 'Bloqueado',
+      adSkinAvailableSub: 'Esta skin de arma já está disponível.',
+      continueBtn: 'Continuar',
+      bestScore: 'Melhor pontuação',
+      roomSecured: 'Sala segura',
+      newBestScore: 'Nova melhor pontuação!',
+    },
+    de: {
+      tagline: 'Taktische Einheit',
+      composeSquads: 'Trupps zusammenstellen',
+      accessibility: 'Barrierefreiheit',
+      colorblindMode: 'Farbenblind-Modus',
+      largeTextMode: 'Große Schrift',
+      weaponSkins: 'Waffen-Skins',
+      compose: 'Trupp zusammenstellen',
+      objectiveLabel: 'Ziel:',
+      operatorLegend: 'Operator',
+      hostageLegend: 'Geisel',
+      bombLegend: 'Générateur',
+      enemyGuardLegend: 'Feindlicher Wächter',
+      armoredGuardLegend: 'Gepanzerter Wächter',
+      sniperLegend: 'Scharfschütze (Shadow ungeschützt)',
+      selectOperatorHint: 'Wähle einen Operator, um zu beginnen.',
+      squadA: 'Trupp A',
+      squadB: 'Trupp B',
+      missionSuccess: 'Mission erfolgreich',
+      nextRoom: 'Nächster Raum →',
+      nextLevel: 'Nächstes Level →',
+      replayRoom: 'Raum wiederholen',
+      replayLevel: 'Level wiederholen',
+      backToMenu: 'Zurück zum Menü',
+      skinUnlocked: 'Skin freigeschaltet!',
+      hintChangeClass: 'Tippe auf einen Operator, um seine Klasse zu ändern.',
+      hintOperatorRemovedContinue: 'Operator entfernt. Wähle einen Operator, um fortzufahren.',
+      hintAssigned: 'Zugewiesen. Du kannst einen weiteren Operator demselben Punkt zuweisen oder GO drücken.',
+      hintOperatorRemovedFromDoor: 'Operator vom Zugang entfernt.',
+      hintSelectFirst: 'Wähle zuerst einen Operator unten aus.',
+      levelLockedLabel: 'Gesperrt',
+      levelLockedToast: 'Schließe das vorherige Level ab, um dieses freizuschalten.',
+      knifeBaseLabel: 'Standard-Karambit',
+      tierName1: 'Gebürsteter Stahl',
+      tierName2: 'Taktisches Schwarz',
+      tierName3: 'Kupfer',
+      tierName4: 'Antikbronze',
+      tierName5: 'Silber',
+      tierName6: 'Gold',
+      tierName7: 'Perlmutt',
+      tierName8: 'Platin',
+      tierName9: 'Geschliffener Diamant',
+      tierName10: 'Regenbogen-Damaststahl',
+      knifeTierWord: 'Stufe',
+      knifeReachedSuffix: ' erreicht!',
+      knifeLevelsCompletedSuffix: ' Level abgeschlossen',
+      knifeUnlockedSuffix: ' freigeschaltet.',
+      knifeProgressToNextSuffix: ' Level bis zur nächsten Stufe',
+      missionFailedTitle: 'Mission fehlgeschlagen',
+      bombExplodedTitle: 'Die Bombe ist explodiert',
+      ptsUnit: 'Pkt.',
+      bombNotSentMsg: 'Niemand wurde geschickt, um die Bombe zu entschärfen',
+      bombTooSlowMsg: 'Die Bombe explodierte, bevor sie entschärft wurde — die entsandten Operatoren waren zu langsam',
+      guardT1Msg: 'Die Wache wurde nicht neutralisiert (kein Operator auf diese Seite geschickt)',
+      armoredGuardMsg: 'Die gepanzerte Wache wurde nicht neutralisiert (kein Operator auf diese Seite geschickt)',
+      secondGuardMsg: 'Eine zweite Wache wurde nicht neutralisiert (kein Operator auf diese Seite geschickt)',
+      guardOtherMsg: 'Eine Wache wurde nicht neutralisiert (kein Operator auf diese Seite geschickt)',
+      noOperatorLostLabel: 'Kein Operator verloren',
+      noShotsFiredLabel: 'Kein Schuss abgefeuert (lautloser Ansatz)',
+      bombFastDefuseLabel: 'Schnelle, kontrollierte Entschärfung (Sicherheitsmarge)',
+      hostageSafeLabel: 'Geisel unverletzt befreit',
+      hostageInjuredLabel: 'Geisel im Schusswechsel verletzt',
+      levelCompletedTitle: 'Level abgeschlossen',
+      missionSuccessTitle: 'Mission erfolgreich',
+      newBestScoreLabel: 'Neuer Bestwert!',
+      replayLevel: 'Level wiederholen',
+      gameSubtitle: 'Taktisches Team',
+      backToMenuShort: '← Menü',
+      launchMissionBtn: 'MISSION STARTEN →',
+      goAssaultBtn: 'GO — ANGRIFF STARTEN',
+      dayLabel: 'Tag',
+      nightLabel: 'Nacht',
+      roomLabel: 'Raum',
+      entryPointsLabel: 'Zugänge',
+      levelLabel: 'Level',
+      objectiveBomb: 'die Bombe entschärfen, bevor sie explodiert — die Geschwindigkeit des Operators zählt mehr als seine Klasse.',
+      objectiveHostage: 'die Bedrohung neutralisieren und die Geisel befreien.',
+      objectiveNeutralize: 'die Bedrohung neutralisieren.',
+      missionInstructions: 'Wähle einen Operator aus und tippe dann auf einen Zugang, um ihn zuzuweisen — du kannst mehrere demselben Punkt zuweisen. Tippe auf einen Punkt ohne ausgewählten Operator, um einen zu entfernen.',
+      skinCuivre: 'Kupfer',
+      skinArgent: 'Silber',
+      skinOr: 'Gold',
+      skinDamas: 'Damaststahl',
+      skinPlatine: 'Platin',
+      skinDore: 'Butin doré',
+      watchAdBtn: '▶ Optionale Werbung ansehen',
+      watchAdBtnLoading: 'Werbung läuft…',
+      adUnlockedLabel: 'Freigeschaltet',
+      adsReqUnit: 'Anzeigen',
+      adsWatchedSingular: ' Anzeige gesehen',
+      adsWatchedPlural: ' Anzeigen gesehen',
+      adFailedMsg: 'Werbung nicht abgeschlossen — versuche es erneut, um einen Skin freizuschalten.',
+      adWatchedToastPrefix: 'Anzeige gesehen (',
+      closeBtn: 'Schließen',
+      lockedLabel: 'Gesperrt',
+      adSkinAvailableSub: 'Dieser Waffen-Skin ist jetzt verfügbar.',
+      continueBtn: 'Weiter',
+      bestScore: 'Bestwert',
+      roomSecured: 'Raum gesichert',
+      newBestScore: 'Neuer Bestwert!',
+    },
+    it: {
+      tagline: 'Unità tattica',
+      composeSquads: 'Componi le squadre',
+      accessibility: 'Accessibilità',
+      colorblindMode: 'Modalità daltonici',
+      largeTextMode: 'Testo grande',
+      weaponSkins: 'Skin delle armi',
+      compose: 'Componi squadra',
+      objectiveLabel: 'Obiettivo:',
+      operatorLegend: 'Operatore',
+      hostageLegend: 'Ostaggio',
+      bombLegend: 'Bomba',
+      enemyGuardLegend: 'Guardia nemica',
+      armoredGuardLegend: 'Guardia corazzata',
+      sniperLegend: 'Cecchino (Shadow esposto)',
+      selectOperatorHint: 'Seleziona un operatore per iniziare.',
+      squadA: 'Squadra A',
+      squadB: 'Squadra B',
+      missionSuccess: 'Missione riuscita',
+      nextRoom: 'Stanza successiva →',
+      nextLevel: 'Livello successivo →',
+      replayRoom: 'Ripeti stanza',
+      replayLevel: 'Ripeti livello',
+      backToMenu: 'Torna al menu',
+      skinUnlocked: 'Skin sbloccata!',
+      hintChangeClass: 'Tocca un operatore per cambiarne la classe.',
+      hintOperatorRemovedContinue: 'Operatore rimosso. Seleziona un operatore per continuare.',
+      hintAssigned: 'Assegnato. Puoi aggiungere un altro operatore allo stesso punto, oppure toccare GO.',
+      hintOperatorRemovedFromDoor: 'Operatore rimosso dal punto d\'accesso.',
+      hintSelectFirst: 'Seleziona prima un operatore qui sotto.',
+      levelLockedLabel: 'Bloccato',
+      levelLockedToast: 'Completa il livello precedente per sbloccare questo.',
+      knifeBaseLabel: 'Couteau standard',
+      tierName1: 'Acciaio spazzolato',
+      tierName2: 'Nero tattico',
+      tierName3: 'Rame',
+      tierName4: 'Bronzo antico',
+      tierName5: 'Argento',
+      tierName6: 'Oro',
+      tierName7: 'Madreperla',
+      tierName8: 'Platino',
+      tierName9: 'Diamante tagliato',
+      tierName10: 'Damasco arcobaleno',
+      knifeTierWord: 'Livello',
+      knifeReachedSuffix: ' raggiunto!',
+      knifeLevelsCompletedSuffix: ' livelli completati',
+      knifeUnlockedSuffix: ' sbloccato.',
+      knifeProgressToNextSuffix: ' livelli al prossimo livello',
+      missionFailedTitle: 'Missione fallita',
+      bombExplodedTitle: 'La bomba è esplosa',
+      ptsUnit: 'pt',
+      bombNotSentMsg: 'Nessuno è stato inviato a disinnescare la bomba',
+      bombTooSlowMsg: 'La bomba è esplosa prima di essere disinnescata — gli operatori inviati erano troppo lenti',
+      guardT1Msg: 'La guardia non è stata neutralizzata (nessun operatore inviato da quel lato)',
+      armoredGuardMsg: 'La guardia corazzata non è stata neutralizzata (nessun operatore inviato da quel lato)',
+      secondGuardMsg: 'Una seconda guardia non è stata neutralizzata (nessun operatore inviato da quel lato)',
+      guardOtherMsg: 'Una guardia non è stata neutralizzata (nessun operatore inviato da quel lato)',
+      noOperatorLostLabel: 'Nessun operatore perso',
+      noShotsFiredLabel: 'Nessun colpo sparato (approccio furtivo)',
+      bombFastDefuseLabel: 'Disinnesco rapido e controllato (margine di sicurezza)',
+      hostageSafeLabel: 'Ostaggio liberato illeso',
+      hostageInjuredLabel: 'Ostaggio ferito nello scambio di colpi',
+      levelCompletedTitle: 'Livello completato',
+      missionSuccessTitle: 'Missione riuscita',
+      newBestScoreLabel: 'Nuovo record!',
+      replayLevel: 'Rigioca livello',
+      gameSubtitle: 'Squadra tattica',
+      backToMenuShort: '← Menu',
+      launchMissionBtn: 'AVVIA MISSIONE →',
+      goAssaultBtn: 'GO — AVVIA L\'ASSALTO',
+      dayLabel: 'Giorno',
+      nightLabel: 'Notte',
+      roomLabel: 'Stanza',
+      entryPointsLabel: 'punti d\'accesso',
+      levelLabel: 'Livello',
+      objectiveBomb: 'disinnescare la bomba prima che esploda — la velocità dell\'operatore conta più della sua classe.',
+      objectiveHostage: 'neutralizzare la minaccia e liberare l\'ostaggio.',
+      objectiveNeutralize: 'neutralizzare la minaccia.',
+      missionInstructions: 'Seleziona un operatore, poi tocca un punto d\'accesso per assegnarlo — puoi assegnarne più di uno allo stesso punto. Tocca un punto senza operatore selezionato per rimuoverne uno.',
+      skinCuivre: 'Rame',
+      skinArgent: 'Argento',
+      skinOr: 'Oro',
+      skinDamas: 'Damasco',
+      skinPlatine: 'Platino',
+      skinDiamant: 'Diamante',
+      watchAdBtn: '▶ Guarda una pubblicità facoltativa',
+      watchAdBtnLoading: 'Pubblicità in corso…',
+      adUnlockedLabel: 'Sbloccata',
+      adsReqUnit: 'pubblicità',
+      adsWatchedSingular: ' pubblicità guardata',
+      adsWatchedPlural: ' pubblicità guardate',
+      adFailedMsg: 'Pubblicità non completata — riprova per sbloccare uno skin.',
+      adWatchedToastPrefix: 'Pubblicità guardata (',
+      closeBtn: 'Chiudi',
+      lockedLabel: 'Bloccata',
+      adSkinAvailableSub: 'Questo skin dell\'arma è ora disponibile.',
+      continueBtn: 'Continua',
+      bestScore: 'Miglior punteggio',
+      roomSecured: 'Stanza messa in sicurezza',
+      newBestScore: 'Nuovo miglior punteggio!',
+    },
+    ru: {
+      tagline: 'Тактическое подразделение',
+      composeSquads: 'Сформировать отряды',
+      accessibility: 'Специальные возможности',
+      colorblindMode: 'Режим для дальтоников',
+      largeTextMode: 'Крупный текст',
+      weaponSkins: 'Скины оружия',
+      compose: 'Сформировать отряд',
+      objectiveLabel: 'Задача:',
+      operatorLegend: 'Оперативник',
+      hostageLegend: 'Заложник',
+      bombLegend: 'Бомба',
+      enemyGuardLegend: 'Охранник',
+      armoredGuardLegend: 'Бронированный охранник',
+      sniperLegend: 'Снайпер (Shadow уязвим)',
+      selectOperatorHint: 'Выберите оперативника, чтобы начать.',
+      squadA: 'Отряд A',
+      squadB: 'Отряд B',
+      missionSuccess: 'Миссия выполнена',
+      nextRoom: 'Следующая комната →',
+      nextLevel: 'Следующий уровень →',
+      replayRoom: 'Повторить комнату',
+      replayLevel: 'Повторить уровень',
+      backToMenu: 'В меню',
+      skinUnlocked: 'Скин разблокирован!',
+      hintChangeClass: 'Коснитесь оперативника, чтобы изменить его класс.',
+      hintOperatorRemovedContinue: 'Оперативник снят. Выберите оперативника, чтобы продолжить.',
+      hintAssigned: 'Назначено. Можно добавить ещё одного оперативника на ту же точку или нажать GO.',
+      hintOperatorRemovedFromDoor: 'Оперативник снят с точки входа.',
+      hintSelectFirst: 'Сначала выберите оперативника ниже.',
+      levelLockedLabel: 'Заблокировано',
+      levelLockedToast: 'Пройдите предыдущий уровень, чтобы разблокировать этот.',
+      knifeBaseLabel: 'Стандартный карамбит',
+      tierName1: 'Матовая сталь',
+      tierName2: 'Тактический чёрный',
+      tierName3: 'Медь',
+      tierName4: 'Античная бронза',
+      tierName5: 'Серебро',
+      tierName6: 'Золото',
+      tierName7: 'Перламутр',
+      tierName8: 'Платина',
+      tierName9: 'Огранённый бриллиант',
+      tierName10: 'Радужный дамаск',
+      knifeTierWord: 'Уровень',
+      knifeReachedSuffix: ' достигнут!',
+      knifeLevelsCompletedSuffix: ' уровней пройдено',
+      knifeUnlockedSuffix: ' разблокирован.',
+      knifeProgressToNextSuffix: ' уровней до следующего этапа',
+      missionFailedTitle: 'Миссия провалена',
+      bombExplodedTitle: 'Бомба взорвалась',
+      ptsUnit: 'очк.',
+      bombNotSentMsg: 'Никто не был отправлен обезвредить бомбу',
+      bombTooSlowMsg: 'Бомба взорвалась до обезвреживания — отправленные оперативники действовали слишком медленно',
+      guardT1Msg: 'Охранник не был нейтрализован (в эту сторону никто не отправлен)',
+      armoredGuardMsg: 'Бронированный охранник не был нейтрализован (в эту сторону никто не отправлен)',
+      secondGuardMsg: 'Второй охранник не был нейтрализован (в эту сторону никто не отправлен)',
+      guardOtherMsg: 'Охранник не был нейтрализован (в эту сторону никто не отправлен)',
+      noOperatorLostLabel: 'Ни один оперативник не потерян',
+      noShotsFiredLabel: 'Ни одного выстрела (скрытный подход)',
+      bombFastDefuseLabel: 'Быстрое и уверенное обезвреживание (запас времени)',
+      hostageSafeLabel: 'Заложник освобождён невредимым',
+      hostageInjuredLabel: 'Заложник ранен в перестрелке',
+      levelCompletedTitle: 'Уровень пройден',
+      missionSuccessTitle: 'Миссия выполнена',
+      newBestScoreLabel: 'Новый рекорд!',
+      replayLevel: 'Переиграть уровень',
+      gameSubtitle: 'Тактический отряд',
+      backToMenuShort: '← Меню',
+      launchMissionBtn: 'НАЧАТЬ МИССИЮ →',
+      goAssaultBtn: 'GO — НАЧАТЬ ШТУРМ',
+      dayLabel: 'День',
+      nightLabel: 'Ночь',
+      roomLabel: 'Комната',
+      entryPointsLabel: 'точки входа',
+      levelLabel: 'Уровень',
+      objectiveBomb: 'обезвредить бомбу до взрыва — скорость оперативника важнее его класса.',
+      objectiveHostage: 'нейтрализовать угрозу и освободить заложника.',
+      objectiveNeutralize: 'нейтрализовать угрозу.',
+      missionInstructions: 'Выберите оперативника, затем коснитесь точки входа, чтобы назначить его — можно назначить несколько на одну точку. Коснитесь точки без выбранного оперативника, чтобы убрать его.',
+      skinCuivre: 'Медь',
+      skinArgent: 'Серебро',
+      skinOr: 'Золото',
+      skinDamas: 'Дамаск',
+      skinPlatine: 'Платина',
+      skinDiamant: 'Алмаз',
+      watchAdBtn: '▶ Посмотреть рекламу (по желанию)',
+      watchAdBtnLoading: 'Идёт реклама…',
+      adUnlockedLabel: 'Разблокировано',
+      adsReqUnit: 'реклам',
+      adsWatchedSingular: ' реклама просмотрена',
+      adsWatchedPlural: ' реклам просмотрено',
+      adFailedMsg: 'Реклама не досмотрена — попробуйте снова, чтобы разблокировать скин.',
+      adWatchedToastPrefix: 'Реклама просмотрена (',
+      closeBtn: 'Закрыть',
+      lockedLabel: 'Заблокировано',
+      adSkinAvailableSub: 'Этот скин оружия теперь доступен.',
+      continueBtn: 'Продолжить',
+      bestScore: 'Лучший результат',
+      roomSecured: 'Комната зачищена',
+      newBestScore: 'Новый лучший результат!',
+    },
+    ja: {
+      tagline: 'タクティカルユニット',
+      composeSquads: 'スクワッドを編成',
+      accessibility: 'アクセシビリティ',
+      colorblindMode: 'カラーユニバーサルモード',
+      largeTextMode: '文字を大きくする',
+      weaponSkins: '武器スキン',
+      compose: 'スクワッド編成',
+      objectiveLabel: '目標：',
+      operatorLegend: 'オペレーター',
+      hostageLegend: '人質',
+      bombLegend: '爆弾',
+      enemyGuardLegend: '敵の警備員',
+      armoredGuardLegend: '重装警備員',
+      sniperLegend: '狙撃手（Shadowが狙われる）',
+      selectOperatorHint: 'オペレーターを選択して開始してください。',
+      squadA: 'スクワッドA',
+      squadB: 'スクワッドB',
+      missionSuccess: 'ミッション成功',
+      nextRoom: '次の部屋 →',
+      nextLevel: '次のレベル →',
+      replayRoom: '部屋をやり直す',
+      replayLevel: 'レベルをやり直す',
+      backToMenu: 'メニューに戻る',
+      skinUnlocked: 'スキン解除！',
+      hintChangeClass: 'オペレーターをタップしてクラスを変更。',
+      hintOperatorRemovedContinue: 'オペレーターを解除しました。続けるにはオペレーターを選択してください。',
+      hintAssigned: '配置完了。同じ地点に別のオペレーターを追加するか、GOをタップしてください。',
+      hintOperatorRemovedFromDoor: '侵入口からオペレーターを解除しました。',
+      hintSelectFirst: 'まず下のオペレーターを選択してください。',
+      levelLockedLabel: 'ロック中',
+      levelLockedToast: 'このレベルを解除するには前のレベルをクリアしてください。',
+      knifeBaseLabel: '標準カランビット',
+      tierName1: 'ブラッシュドスチール',
+      tierName2: 'タクティカルブラック',
+      tierName3: '銅',
+      tierName4: 'アンティークブロンズ',
+      tierName5: '銀',
+      tierName6: '金',
+      tierName7: 'マザーオブパール',
+      tierName8: 'プラチナ',
+      tierName9: 'カットダイヤモンド',
+      tierName10: 'レインボーダマスカス',
+      knifeTierWord: 'ティア',
+      knifeReachedSuffix: 'に到達！',
+      knifeLevelsCompletedSuffix: 'レベル完了',
+      knifeUnlockedSuffix: 'を解除。',
+      knifeProgressToNextSuffix: 'レベルで次のティアへ',
+      missionFailedTitle: 'ミッション失敗',
+      bombExplodedTitle: '爆弾が爆発した',
+      ptsUnit: 'pt',
+      bombNotSentMsg: '爆弾解除に誰も派遣されなかった',
+      bombTooSlowMsg: '解除される前に爆弾が爆発した——派遣されたオペレーターの動きが遅すぎた',
+      guardT1Msg: '警備は無力化されなかった（その側にオペレーターが派遣されなかった）',
+      armoredGuardMsg: '重装警備は無力化されなかった（その側にオペレーターが派遣されなかった）',
+      secondGuardMsg: '2人目の警備は無力化されなかった（その側にオペレーターが派遣されなかった）',
+      guardOtherMsg: '警備は無力化されなかった（その側にオペレーターが派遣されなかった）',
+      noOperatorLostLabel: 'オペレーターの損失なし',
+      noShotsFiredLabel: '発砲なし（隠密アプローチ）',
+      bombFastDefuseLabel: '迅速かつ安全な解除（余裕あり）',
+      hostageSafeLabel: '人質は無傷で解放された',
+      hostageInjuredLabel: '人質は銃撃戦で負傷した',
+      levelCompletedTitle: 'レベル完了',
+      missionSuccessTitle: 'ミッション成功',
+      newBestScoreLabel: '新記録！',
+      replayLevel: 'レベルをリプレイ',
+      gameSubtitle: '戦術部隊',
+      backToMenuShort: '← メニュー',
+      launchMissionBtn: 'ミッション開始 →',
+      goAssaultBtn: 'GO — 突入開始',
+      dayLabel: '昼',
+      nightLabel: '夜',
+      roomLabel: '部屋',
+      entryPointsLabel: 'つの侵入口',
+      levelLabel: 'レベル',
+      objectiveBomb: '爆発前に爆弾を解除する——オペレーターの速度がクラスよりも重要だ。',
+      objectiveHostage: '脅威を無力化し、人質を解放する。',
+      objectiveNeutralize: '脅威を無力化する。',
+      missionInstructions: 'オペレーターを選択し、侵入口をタップして割り当てる——同じ地点に複数割り当てることも可能。オペレーターを選択せずに地点をタップすると解除される。',
+      skinCuivre: '銅',
+      skinArgent: '銀',
+      skinOr: '金',
+      skinDamas: 'ダマスカス',
+      skinPlatine: 'プラチナ',
+      skinDiamant: 'ダイヤモンド',
+      watchAdBtn: '▶ 任意の広告を見る',
+      watchAdBtnLoading: '広告再生中…',
+      adUnlockedLabel: '解除済み',
+      adsReqUnit: '回視聴',
+      adsWatchedSingular: '回視聴',
+      adsWatchedPlural: '回視聴',
+      adFailedMsg: '広告が完了しませんでした——もう一度試してスキンを解除してください。',
+      adWatchedToastPrefix: '広告視聴済み（',
+      closeBtn: '閉じる',
+      lockedLabel: 'ロック中',
+      adSkinAvailableSub: 'この武器スキンが利用可能になりました。',
+      continueBtn: '続ける',
+      bestScore: 'ベストスコア',
+      roomSecured: '部屋を制圧',
+      newBestScore: '新記録！',
+    },
+    ko: {
+      tagline: '전술 유닛',
+      composeSquads: '분대 편성',
+      accessibility: '접근성',
+      colorblindMode: '색맹 모드',
+      largeTextMode: '큰 글씨',
+      weaponSkins: '무기 스킨',
+      compose: '분대 편성',
+      objectiveLabel: '목표:',
+      operatorLegend: '오퍼레이터',
+      hostageLegend: '인질',
+      bombLegend: '폭탄',
+      enemyGuardLegend: '적 경비병',
+      armoredGuardLegend: '중무장 경비병',
+      sniperLegend: '저격수 (Shadow 노출됨)',
+      selectOperatorHint: '오퍼레이터를 선택해 시작하세요.',
+      squadA: '분대 A',
+      squadB: '분대 B',
+      missionSuccess: '임무 성공',
+      nextRoom: '다음 방 →',
+      nextLevel: '다음 레벨 →',
+      replayRoom: '방 다시 하기',
+      replayLevel: '레벨 다시 하기',
+      backToMenu: '메뉴로 돌아가기',
+      skinUnlocked: '스킨 해제!',
+      hintChangeClass: '오퍼레이터를 눌러 클래스를 변경하세요.',
+      hintOperatorRemovedContinue: '오퍼레이터가 해제되었습니다. 계속하려면 오퍼레이터를 선택하세요.',
+      hintAssigned: '배정 완료. 같은 지점에 다른 오퍼레이터를 추가하거나 GO를 누르세요.',
+      hintOperatorRemovedFromDoor: '진입로에서 오퍼레이터가 해제되었습니다.',
+      hintSelectFirst: '먼저 아래에서 오퍼레이터를 선택하세요.',
+      levelLockedLabel: '잠김',
+      levelLockedToast: '이 레벨을 해제하려면 이전 레벨을 완료하세요.',
+      knifeBaseLabel: '기본 카람빗',
+      tierName1: '브러시드 스틸',
+      tierName2: '택티컬 블랙',
+      tierName3: '구리',
+      tierName4: '앤틱 브론즈',
+      tierName5: '은',
+      tierName6: '금',
+      tierName7: '자개',
+      tierName8: '백금',
+      tierName9: '커트 다이아몬드',
+      tierName10: '레인보우 다마스커스',
+      knifeTierWord: '등급',
+      knifeReachedSuffix: ' 도달!',
+      knifeLevelsCompletedSuffix: '개 레벨 완료',
+      knifeUnlockedSuffix: ' 해제됨.',
+      knifeProgressToNextSuffix: '개 레벨 후 다음 등급',
+      missionFailedTitle: '임무 실패',
+      bombExplodedTitle: '폭탄이 폭발했다',
+      ptsUnit: 'pt',
+      bombNotSentMsg: '폭탄을 해체하러 아무도 파견되지 않았다',
+      bombTooSlowMsg: '폭탄이 해체되기 전에 폭발했다 — 파견된 오퍼레이터가 너무 느렸다',
+      guardT1Msg: '경비병이 제거되지 않았다 (그쪽에 파견된 오퍼레이터 없음)',
+      armoredGuardMsg: '중무장 경비병이 제거되지 않았다 (그쪽에 파견된 오퍼레이터 없음)',
+      secondGuardMsg: '두 번째 경비병이 제거되지 않았다 (그쪽에 파견된 오퍼레이터 없음)',
+      guardOtherMsg: '경비병이 제거되지 않았다 (그쪽에 파견된 오퍼레이터 없음)',
+      noOperatorLostLabel: '오퍼레이터 손실 없음',
+      noShotsFiredLabel: '발포 없음 (은밀한 접근)',
+      bombFastDefuseLabel: '신속하고 안전한 해체 (여유 확보)',
+      hostageSafeLabel: '인질 무사히 구출',
+      hostageInjuredLabel: '인질이 총격전에서 부상',
+      levelCompletedTitle: '레벨 완료',
+      missionSuccessTitle: '임무 성공',
+      newBestScoreLabel: '신기록!',
+      replayLevel: '레벨 다시 플레이',
+      gameSubtitle: '전술 분대',
+      backToMenuShort: '← 메뉴',
+      launchMissionBtn: '임무 시작 →',
+      goAssaultBtn: 'GO — 돌입 시작',
+      dayLabel: '낮',
+      nightLabel: '밤',
+      roomLabel: '방',
+      entryPointsLabel: '개 진입로',
+      levelLabel: '레벨',
+      objectiveBomb: '폭발 전에 폭탄을 해체하라 — 오퍼레이터의 속도가 클래스보다 중요하다.',
+      objectiveHostage: '위협을 제거하고 인질을 구출하라.',
+      objectiveNeutralize: '위협을 제거하라.',
+      missionInstructions: '오퍼레이터를 선택한 후 진입로를 눌러 배정하세요 — 같은 지점에 여러 명을 배정할 수 있습니다. 오퍼레이터를 선택하지 않고 지점을 누르면 배정이 해제됩니다.',
+      skinCuivre: '구리',
+      skinArgent: '은',
+      skinOr: '금',
+      skinDamas: '다마스커스',
+      skinPlatine: '백금',
+      skinDiamant: '다이아몬드',
+      watchAdBtn: '▶ 선택 광고 보기',
+      watchAdBtnLoading: '광고 재생 중…',
+      adUnlockedLabel: '해제됨',
+      adsReqUnit: '개 광고',
+      adsWatchedSingular: '개 광고 시청',
+      adsWatchedPlural: '개 광고 시청',
+      adFailedMsg: '광고가 완료되지 않았습니다 — 스킨을 해제하려면 다시 시도하세요.',
+      adWatchedToastPrefix: '광고 시청 (',
+      closeBtn: '닫기',
+      lockedLabel: '잠김',
+      adSkinAvailableSub: '이 무기 스킨을 이제 사용할 수 있습니다.',
+      continueBtn: '계속',
+      bestScore: '최고 점수',
+      roomSecured: '방 제압 완료',
+      newBestScore: '신기록!',
+    },
+    zh: {
+      tagline: '战术小队',
+      composeSquads: '编组小队',
+      accessibility: '无障碍设置',
+      colorblindMode: '色盲模式',
+      largeTextMode: '大字体',
+      weaponSkins: '武器皮肤',
+      compose: '编组小队',
+      objectiveLabel: '目标：',
+      operatorLegend: '干员',
+      hostageLegend: '人质',
+      bombLegend: '炸弹',
+      enemyGuardLegend: '敌方守卫',
+      armoredGuardLegend: '重装守卫',
+      sniperLegend: '狙击手（Shadow 会暴露）',
+      selectOperatorHint: '选择一名干员以开始。',
+      squadA: 'A小队',
+      squadB: 'B小队',
+      missionSuccess: '任务成功',
+      nextRoom: '下一个房间 →',
+      nextLevel: '下一关 →',
+      replayRoom: '重玩本房间',
+      replayLevel: '重玩本关',
+      backToMenu: '返回菜单',
+      skinUnlocked: '皮肤已解锁！',
+      hintChangeClass: '点击干员以更改其职业。',
+      hintOperatorRemovedContinue: '干员已移除。请选择一名干员以继续。',
+      hintAssigned: '已分配。你可以将另一名干员分配到同一入口，或点击GO。',
+      hintOperatorRemovedFromDoor: '已从入口移除干员。',
+      hintSelectFirst: '请先在下方选择一名干员。',
+      levelLockedLabel: '已锁定',
+      levelLockedToast: '完成上一关才能解锁此关卡。',
+      knifeBaseLabel: '标准卡兰比特刀',
+      tierName1: '拉丝钢',
+      tierName2: '战术黑',
+      tierName3: '铜',
+      tierName4: '古铜',
+      tierName5: '银',
+      tierName6: '金',
+      tierName7: '珍珠母',
+      tierName8: '铂金',
+      tierName9: '切割钻石',
+      tierName10: '彩虹大马士革',
+      knifeTierWord: '阶段',
+      knifeReachedSuffix: '达成！',
+      knifeLevelsCompletedSuffix: '个关卡已完成',
+      knifeUnlockedSuffix: '已解锁。',
+      knifeProgressToNextSuffix: '个关卡后进入下一阶段',
+      missionFailedTitle: '任务失败',
+      bombExplodedTitle: '炸弹已爆炸',
+      ptsUnit: '分',
+      bombNotSentMsg: '没有人被派去拆除炸弹',
+      bombTooSlowMsg: '炸弹在被拆除前就爆炸了——派出的干员动作太慢',
+      guardT1Msg: '警卫未被消灭（该侧未派遣干员）',
+      armoredGuardMsg: '重装警卫未被消灭（该侧未派遣干员）',
+      secondGuardMsg: '第二名警卫未被消灭（该侧未派遣干员）',
+      guardOtherMsg: '警卫未被消灭（该侧未派遣干员）',
+      noOperatorLostLabel: '未损失干员',
+      noShotsFiredLabel: '未开一枪（潜行接近）',
+      bombFastDefuseLabel: '快速且可控的拆除（留有安全余量）',
+      hostageSafeLabel: '人质安全获救',
+      hostageInjuredLabel: '人质在交火中受伤',
+      levelCompletedTitle: '关卡完成',
+      missionSuccessTitle: '任务成功',
+      newBestScoreLabel: '刷新最佳纪录！',
+      replayLevel: '重玩关卡',
+      gameSubtitle: '战术小队',
+      backToMenuShort: '← 菜单',
+      launchMissionBtn: '开始任务 →',
+      goAssaultBtn: 'GO — 开始突袭',
+      dayLabel: '白天',
+      nightLabel: '夜晚',
+      roomLabel: '房间',
+      entryPointsLabel: '个入口',
+      levelLabel: '关卡',
+      objectiveBomb: '在爆炸前拆除炸弹——干员的速度比职业更重要。',
+      objectiveHostage: '消灭威胁并解救人质。',
+      objectiveNeutralize: '消灭威胁。',
+      missionInstructions: '选择一名干员，然后点击一个入口进行分配——可以将多名干员分配到同一入口。在未选择干员的情况下点击入口可取消分配。',
+      skinCuivre: '铜',
+      skinArgent: '银',
+      skinOr: '金',
+      skinDamas: '大马士革',
+      skinPlatine: '铂金',
+      skinDiamant: '钻石',
+      watchAdBtn: '▶ 观看可选广告',
+      watchAdBtnLoading: '广告播放中…',
+      adUnlockedLabel: '已解锁',
+      adsReqUnit: '个广告',
+      adsWatchedSingular: '个广告已观看',
+      adsWatchedPlural: '个广告已观看',
+      adFailedMsg: '广告未完成——请重试以解锁皮肤。',
+      adWatchedToastPrefix: '已观看广告（',
+      closeBtn: '关闭',
+      lockedLabel: '已锁定',
+      adSkinAvailableSub: '该武器皮肤现已可用。',
+      continueBtn: '继续',
+      bestScore: '最高分',
+      roomSecured: '房间已肃清',
+      newBestScore: '刷新最高分！',
+    },
+  };
+
+  function t(key) {
+    return (STRINGS[currentLang] && STRINGS[currentLang][key]) || STRINGS.fr[key] || key;
+  }
+
+  // Applique la traduction à tous les éléments statiques marqués
+  // data-i18n="clé" — appelé au chargement et à chaque changement de langue.
+  function applyStaticTranslations() {
+    document.querySelectorAll('[data-i18n]').forEach(el => {
+      el.textContent = t(el.getAttribute('data-i18n'));
+    });
+    document.documentElement.setAttribute('lang', currentLang === 'ptbr' ? 'pt-BR' : currentLang);
+  }
+
+  function setLanguage(lang) {
+    if (!STRINGS[lang]) return;
+    currentLang = lang;
+    try { localStorage.setItem('deadsector-lang', lang); } catch (e) {}
+    applyStaticTranslations();
+    document.querySelectorAll('.lang-btn').forEach(b => {
+      b.classList.toggle('active', b.getAttribute('data-lang') === lang);
+    });
+    if (typeof renderSkinTrack === 'function') renderSkinTrack();
+    if (typeof renderKnifeProgress === 'function') renderKnifeProgress();
+  }
+
+  const classData = {
+    Assault: { wpn: 'M4', speed: 2 },
+    Light:  { wpn: 'MP5', speed: 3 },
+    Heavy:  { wpn: 'M249', speed: 1 },
+    Shadow: { wpn: 'Karambit', speed: 2 },
+  };
+  const classOrder = ['Assault', 'Light', 'Heavy', 'Shadow'];
+
+  // Sons d'armes par classe (jour). Shadow n'a pas d'entrée : toujours silencieux (karambit).
+  const CLASS_SOUND_SRC = {
+    Assault: './sound-assault.mp3',
+    Heavy: './sound-heavy.mp3',
+    Light: './sound-light.mp3',
+  };
+  // La nuit, toutes les armes sont équipées d'un silencieux : un seul fichier
+  // partagé, dont la cadence de lecture varie par classe pour garder une
+  // distinction sonore (plus vif/aigu pour Light, plus lent/grave pour Heavy).
+  const NIGHT_SOUND_SRC = './sound-night.mp3';
+  const CLASS_PLAYBACK_RATE = { Assault: 1.0, Heavy: 0.85, Light: 1.25 };
+  // Distance de tir et nombre de coups par classe : Light se bat de près
+  // mais son calibre plus faible demande plus de coups ; Heavy tire de plus
+  // loin mais compense son manque de précision par davantage de tirs.
+  const CLASS_STANDOFF = { Assault: 50, Heavy: 75, Light: 25 };
+  const CLASS_SHOT_COUNT = { Assault: 2, Heavy: 3, Light: 4 };
+
+  const SFX = {
+    explosion: './sound-explosion.mp3',
+  };
+
+  // Web Audio API : les fichiers sont décodés une seule fois en mémoire au
+  // démarrage, puis chaque lecture démarre quasi instantanément (contrairement
+  // à new Audio()/cloneNode() qui gardait un léger délai de lecture audible).
+  let audioCtx = null;
+  const AUDIO_BUFFERS = {};
+  function getAudioCtx() {
+    if (!audioCtx) {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      audioCtx = new AC();
+    }
+    return audioCtx;
+  }
+  function loadAudioBuffer(key, src) {
+    fetch(src)
+      .then(res => res.arrayBuffer())
+      .then(arr => getAudioCtx().decodeAudioData(arr))
+      .then(buf => { AUDIO_BUFFERS[key] = buf; })
+      .catch(() => {});
+  }
+  [
+    ['sfx-explosion', SFX.explosion],
+    ['class-Assault', CLASS_SOUND_SRC.Assault],
+    ['class-Heavy', CLASS_SOUND_SRC.Heavy],
+    ['class-Light', CLASS_SOUND_SRC.Light],
+    ['night', NIGHT_SOUND_SRC],
+  ].forEach(([key, src]) => loadAudioBuffer(key, src));
+
+  function playPreloaded(key, rate, gain) {
+    const buf = AUDIO_BUFFERS[key];
+    if (!buf) return; // pas encore décodé (rare) : on n'échoue pas, on saute simplement
+    try {
+      const ctx = getAudioCtx();
+      const node = ctx.createBufferSource();
+      node.buffer = buf;
+      node.playbackRate.value = rate || 1.0;
+      if (gain && gain !== 1) {
+        const gainNode = ctx.createGain();
+        gainNode.gain.value = gain;
+        node.connect(gainNode);
+        gainNode.connect(ctx.destination);
+      } else {
+        node.connect(ctx.destination);
+      }
+      node.start(0);
+    } catch (e) {}
+  }
+
+  function playSfx(key) {
+    playPreloaded('sfx-' + key);
+  }
+
+  // Éclat visuel orange-jaune, utilisé à la fois pour l'explosion de la
+  // bombe et pour le déclenchement d'une porte piégée.
+  function spawnExplosionBurst(parent, cx, cy) {
+    const ns = 'http://www.w3.org/2000/svg';
+    const g = document.createElementNS(ns, 'g');
+    g.setAttribute('transform', 'translate(' + cx + ',' + cy + ') scale(0.3)');
+    g.style.opacity = '1';
+    g.style.transition = 'transform 380ms ease-out, opacity 380ms ease-out';
+    g.style.pointerEvents = 'none';
+    const outer = document.createElementNS(ns, 'circle');
+    outer.setAttribute('r', '11'); outer.setAttribute('fill', '#ff8c1a'); outer.setAttribute('opacity', '0.55');
+    const inner = document.createElementNS(ns, 'circle');
+    inner.setAttribute('r', '5.5'); inner.setAttribute('fill', '#ffe066');
+    g.appendChild(outer); g.appendChild(inner);
+    parent.appendChild(g);
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        g.setAttribute('transform', 'translate(' + cx + ',' + cy + ') scale(2.2)');
+        g.style.opacity = '0';
+      });
+    });
+    setTimeout(() => g.remove(), 420);
+  }
+
+  // Éclat de tir en forme d'étoile (plus reconnaissable qu'un simple point),
+  // synchronisé le plus étroitement possible avec le son.
+  function spawnMuzzleFlash(marker, tipY) {
+    const ns = 'http://www.w3.org/2000/svg';
+    const g = document.createElementNS(ns, 'g');
+    g.setAttribute('transform', 'translate(0,' + tipY + ')');
+    g.style.pointerEvents = 'none';
+    const halo = document.createElementNS(ns, 'circle');
+    halo.setAttribute('r', '5'); halo.setAttribute('fill', '#ff8c1a'); halo.setAttribute('opacity', '0.55');
+    const star = document.createElementNS(ns, 'polygon');
+    const pts = [];
+    for (let k = 0; k < 8; k++) {
+      const ang = k * Math.PI / 4;
+      const rad = k % 2 === 0 ? 4.2 : 1.7;
+      pts.push((Math.cos(ang) * rad).toFixed(2) + ',' + (Math.sin(ang) * rad).toFixed(2));
+    }
+    star.setAttribute('points', pts.join(' '));
+    star.setAttribute('fill', '#ffe066');
+    g.appendChild(halo); g.appendChild(star);
+    marker.appendChild(g);
+    setTimeout(() => g.remove(), 90);
+  }
+
+  // Même éclat, mais positionné en coordonnées absolues de la pièce plutôt
+  // que relatif à un opérateur — utilisé pour la riposte ennemie.
+  function spawnEnemyMuzzleFlash(svg, x, y) {
+    const ns = 'http://www.w3.org/2000/svg';
+    const g = document.createElementNS(ns, 'g');
+    g.setAttribute('transform', 'translate(' + x + ',' + y + ')');
+    g.style.pointerEvents = 'none';
+    const halo = document.createElementNS(ns, 'circle');
+    halo.setAttribute('r', '9'); halo.setAttribute('fill', '#ff8c1a'); halo.setAttribute('opacity', '0.65');
+    const star = document.createElementNS(ns, 'polygon');
+    const pts = [];
+    for (let k = 0; k < 8; k++) {
+      const ang = k * Math.PI / 4;
+      const rad = k % 2 === 0 ? 7.2 : 2.9;
+      pts.push((Math.cos(ang) * rad).toFixed(2) + ',' + (Math.sin(ang) * rad).toFixed(2));
+    }
+    star.setAttribute('points', pts.join(' '));
+    star.setAttribute('fill', '#ffe066');
+    g.appendChild(halo); g.appendChild(star);
+    svg.appendChild(g);
+    setTimeout(() => g.remove(), 220);
+  }
+
+  function playClassSound(cls) {
+    const rate = isNight ? (CLASS_PLAYBACK_RATE[cls] || 1.0) : 1.0;
+    const key = isNight ? 'night' : 'class-' + cls;
+    if (!isNight && !CLASS_SOUND_SRC[cls]) return; // Shadow : pas de son
+    playPreloaded(key, rate);
+  }
+
+  // Camouflage par environnement — codes validés pour la production.
+  // "text" est choisi selon le contraste (clair sur camo foncé, foncé sur camo clair).
+  const CAMO_PALETTES = {
+    urbain:   { dark: '#1C1C1C', mid: '#3A3A3A', light: '#D9D9D9', outline: '#111111', text: '#e9e4d4' },
+    desert:   { dark: '#8A6D3B', mid: '#C2A878', light: '#E8D9B5', outline: '#5C4A2A', text: '#2a2410' },
+    jungle:   { dark: '#2E3B1F', mid: '#4B5E34', light: '#7C8F5A', outline: '#1F2913', text: '#e9e4d4' },
+    arctique: { dark: '#B8C4CC', mid: '#E8EDF0', light: '#FFFFFF', outline: '#8A97A0', text: '#2a2410' },
+  };
+  // Shadow ignore le camouflage : une seule tenue noire intégrale, peu importe l'environnement.
+  const SHADOW_PALETTE = { dark: '#000000', mid: '#111111', light: '#333333', outline: '#000000', text: '#e9e4d4' };
+  const SQUAD_BADGE_COLOR = { a: '#EF9F27', b: '#5b8a9e' }; // ambre / teal-bleu, aligné sur --squad-b
+
+  // Room content: two threats, each reachable from a subset of doors
+  const threats = {
+    T1: { x: 175, y: 85, doors: ['N', 'NE'] },
+    T2: { x: 115, y: 204, doors: ['E', 'S', 'W'] },
+    T3: { x: 230, y: 150, doors: ['N', 'NE', 'E'] },
+    T4: { x: 150, y: 235, doors: ['S'] },
+    T5: { x: 70, y: 150, doors: ['W'] },
+    T6: { x: 75, y: 215, doors: ['W', 'F'] },
+  };
+  const doorThreatMap = { N: 'T1', NE: 'T1', E: 'T2', S: 'T2', W: 'T2', F: 'T2' };
+  const trappedDoor = 'S';   // hidden from the player, as in the real game
+  const trapClass = 'Heavy'; // Heavy forcing this door detonates the trap
+
+  const operators = [
+    { id: 'a1', squad: 'a', cls: 'Assault' },
+    { id: 'a2', squad: 'a', cls: 'Light' },
+    { id: 'a3', squad: 'a', cls: 'Heavy' },
+    { id: 'b1', squad: 'b', cls: 'Assault' },
+    { id: 'b2', squad: 'b', cls: 'Light' },
+    { id: 'b3', squad: 'b', cls: 'Shadow' },
+  ];
+  // Composition d'escouade sauvegardée : sans ça, elle revenait aux classes
+  // par défaut à chaque rechargement, alors qu'elle est censée rester la
+  // même d'une mission à l'autre (et maintenant, d'une session à l'autre).
+  (function restoreSquadComposition() {
+    const saved = loadJSONPref('deadsector-squad-composition', null);
+    if (!saved) return;
+    operators.forEach(op => { if (saved[op.id] && classOrder.includes(saved[op.id])) op.cls = saved[op.id]; });
+  })();
+  function saveSquadComposition() {
+    const map = {};
+    operators.forEach(op => { map[op.id] = op.cls; });
+    saveJSONPref('deadsector-squad-composition', map);
+  }
+
+  const doors = ['N', 'NE', 'E', 'S', 'W'];
+  const assignments = {}; // doorId -> operator
+  let selectedOp = null;
+  let resolved = false;
+  let composeMode = false;
+
+  const rosterA = document.getElementById('squad-a');
+  const rosterB = document.getElementById('squad-b');
+  const hint = document.getElementById('hint');
+  const goBtn = document.getElementById('go-btn');
+
+  function isOpAssigned(op) {
+    return Object.values(assignments).some(arr => arr.some(o => o.id === op.id));
+  }
+
+  function renderRoster() {
+    rosterA.innerHTML = '';
+    rosterB.innerHTML = '';
+    operators.forEach(op => {
+      const chip = document.createElement('div');
+      chip.className = 'chip squad-' + op.squad;
+      const isAssigned = isOpAssigned(op);
+      const isKO = levelCasualties.has(op.id);
+      if (isAssigned) chip.classList.add('assigned');
+      if (selectedOp === op.id) chip.classList.add('selected');
+      if (composeMode) chip.classList.add('compose');
+      if (isKO) chip.classList.add('ko');
+      const wpn = isKO ? 'Hors combat' : classData[op.cls].wpn;
+      const env = levelDefs[currentLevel].env || 'urbain';
+
+      const portrait = document.createElement('img');
+      portrait.className = 'chip-portrait';
+      portrait.src = getOperatorPortrait(op.cls, env);
+      portrait.alt = op.cls;
+
+      const textWrap = document.createElement('div');
+      textWrap.className = 'chip-text';
+      const clsDiv = document.createElement('div');
+      clsDiv.className = 'cls';
+      clsDiv.textContent = op.cls;
+      const wpnDiv = document.createElement('div');
+      wpnDiv.className = 'wpn';
+      wpnDiv.textContent = wpn;
+      textWrap.appendChild(clsDiv);
+      textWrap.appendChild(wpnDiv);
+      chip.appendChild(portrait);
+      chip.appendChild(textWrap);
+
+      if (!isKO) {
+        chip.addEventListener('click', () => {
+          if (composeMode) { cycleClass(op); }
+          else { onChipTap(op, isAssigned); }
+        });
+      }
+      (op.squad === 'a' ? rosterA : rosterB).appendChild(chip);
+    });
+  }
+
+  function cycleClass(op) {
+    const idx = classOrder.indexOf(op.cls);
+    op.cls = classOrder[(idx + 1) % classOrder.length];
+    saveSquadComposition();
+    renderAll();
+  }
+
+  function toggleCompose() {
+    if (resolved) return;
+    composeMode = !composeMode;
+    if (composeMode) {
+      for (const k in assignments) delete assignments[k];
+      selectedOp = null;
+      hint.textContent = t('hintChangeClass');
+    } else {
+      hint.textContent = t('selectOperatorHint');
+    }
+    document.getElementById('compose-btn').classList.toggle('active', composeMode);
+    document.getElementById('compose-btn').textContent = composeMode ? 'Prêt' : 'Composer';
+    renderAll();
+  }
+  document.getElementById('compose-btn').addEventListener('click', toggleCompose);
+
+  // --- Level definitions & menu ---
+  const levelDefs = {
+    1: { name: "Niveau 1 · Aile d'admission", sub: 'Facile · 5 entrées · 3 pièces enchaînées', env: 'desert', roomShape: 'square',
+         briefImg: './brief-desert-research.jpg',
+         brief: "L'installation de recherche désertique d'Halveigh Biotech a été envahie par la contamination. Un survivant est retranché dans l'aile d'admission — nettoyez les lieux et exfiltrez-le.",
+         rooms: [
+           { doors: ['N', 'NE', 'E', 'S', 'W'], threats: ['T1', 'T3', 'T4'], trap: false },
+           { doors: ['N', 'NE', 'E', 'S', 'W'], threats: ['T1', 'T3', 'T4', 'T5'], trap: true },
+           { doors: ['N', 'NE', 'E', 'S', 'W'], threats: ['T1', 'T2', 'T3', 'T4', 'T5', 'T6'], trap: true },
+         ] },
+    2: { name: "Niveau 2 · Aile d'admission", sub: "Difficile · 2 points d'entrée · 3 pièces enchaînées", env: 'desert', roomShape: 'ring',
+         briefImg: './brief-desert-research.jpg',
+         brief: "Une nouvelle poussée d'infectés a été signalée dans cette même aile : la plupart des accès sont bloqués par les décombres. Seuls deux points d'entrée restent praticables.",
+         rooms: [
+           { doors: ['N', 'S'], threats: ['T1'], trap: false },
+           { doors: ['N', 'S'], threats: ['T1', 'T3'], trap: true },
+           { doors: ['N', 'S'], threats: ['T1', 'T2', 'T3'], trap: true },
+         ] },
+    3: { name: 'Niveau 3 · Laboratoire principal', sub: 'Facile · 5 entrées · 3 pièces enchaînées', env: 'desert', roomShape: 'L',
+         briefImg: './brief-desert-research.jpg',
+         brief: "Le laboratoire principal d'Halveigh Biotech renferme les échantillons à l'origine de la contamination. Progressez pièce par pièce jusqu'au fond du bâtiment.",
+         rooms: [
+           { doors: ['N', 'NE', 'E', 'S', 'W'], threats: ['T1', 'T3', 'T4'], trap: false },
+           { doors: ['N', 'NE', 'E', 'S', 'W'], threats: ['T1', 'T3', 'T4', 'T5'], trap: true },
+           { doors: ['N', 'NE', 'E', 'S', 'W'], threats: ['T1', 'T2', 'T3', 'T4', 'T5', 'T6'], trap: true },
+         ] },
+    4: { name: 'Niveau 4 · Laboratoire principal', sub: "Stabilisation — la vitesse compte · 4 points d'entrée · 3 pièces enchaînées", env: 'desert', roomShape: 'cross',
+         briefImg: './brief-desert-research.jpg',
+         brief: 'Le générateur de confinement du laboratoire est sur le point de céder. Stabilisez-le avant la défaillance totale.',
+         rooms: [
+           { doors: ['N', 'E', 'S', 'W'], threats: ['T1'], trap: false },
+           { doors: ['N', 'E', 'S', 'W'], threats: ['T1', 'T3'], trap: true },
+           { doors: ['N', 'E', 'S', 'W'], threats: ['T1'], trap: false, type: 'bomb' },
+         ] },
+    5: { name: 'Niveau 5 · Quai de chargement', sub: 'Facile · 5 entrées · 3 pièces enchaînées', env: 'desert', roomShape: 'courtyard',
+         briefImg: './brief-desert-research.jpg',
+         brief: "Le quai de chargement de l'installation grouille d'infectés attirés par le bruit des générateurs de secours. Infiltrez les lieux et neutralisez la menace.",
+         rooms: [
+           { doors: ['N', 'NE', 'E', 'S', 'W'], threats: ['T1', 'T3', 'T4'], trap: false },
+           { doors: ['N', 'NE', 'E', 'S', 'W'], threats: ['T1', 'T3', 'T4', 'T5'], trap: true },
+           { doors: ['N', 'NE', 'E', 'S', 'W'], threats: ['T1', 'T2', 'T3', 'T4', 'T5', 'T6'], trap: true },
+         ] },
+  };
+  const BOMB_THRESHOLD_MS = 1750; // fastest assigned operator must arrive within this
+  const BOMB_FAST_MS = 1650;      // bonus: defused with real speed to spare
+const LEVEL_I18N = {};
+
+  // Retourne le champ localisé d'un niveau (name/sub/brief) pour la langue
+  // active, avec repli sur le français (levelDefs) si l'entrée ou le champ
+  // n'existe pas encore dans cette langue — ex. le texte de briefing n'est
+  // traduit qu'en anglais et espagnol pour l'instant, les 7 autres langues
+  // affichent donc le français pour ce champ précis sans jamais planter.
+  function getLevelField(id, field) {
+    const loc = LEVEL_I18N[currentLang];
+    if (loc && loc[id] && loc[id][field] !== undefined) return loc[id][field];
+    return levelDefs[id][field];
+  }
+
+  const bestScores = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0, 8: 0, 9: 0, 10: 0, 11: 0, 12: 0, 13: 0, 14: 0, 15: 0, 16: 0, 17: 0, 18: 0, 19: 0, 20: 0, 21: 0, 22: 0, 23: 0, 24: 0, 25: 0, 26: 0, 27: 0, 28: 0, 29: 0, 30: 0, 31: 0, 32: 0, 33: 0, 34: 0, 35: 0, 36: 0, 37: 0, 38: 0, 39: 0, 40: 0, 41: 0, 42: 0, 43: 0, 44: 0, 45: 0, 46: 0, 47: 0, 48: 0, 49: 0, 50: 0, 51: 0, 52: 0, 53: 0, 54: 0, 55: 0, 56: 0, 57: 0, 58: 0, 59: 0, 60: 0, 61: 0, 62: 0, 63: 0, 64: 0, 65: 0, 66: 0, 67: 0, 68: 0, 69: 0, 70: 0, 71: 0, 72: 0, 73: 0, 74: 0, 75: 0, 76: 0, 77: 0, 78: 0, 79: 0, 80: 0, 81: 0, 82: 0, 83: 0, 84: 0, 85: 0, 86: 0, 87: 0, 88: 0, 89: 0, 90: 0, 91: 0, 92: 0, 93: 0, 94: 0, 95: 0, 96: 0, 97: 0, 98: 0, 99: 0, 100: 0, 101: 0, 102: 0, 103: 0, 104: 0, 105: 0, 106: 0, 107: 0, 108: 0, 109: 0, 110: 0, 111: 0, 112: 0, 113: 0, 114: 0, 115: 0, 116: 0, 117: 0, 118: 0, 119: 0, 120: 0, 121: 0, 122: 0, 123: 0, 124: 0, 125: 0, 126: 0, 127: 0, 128: 0, 129: 0, 130: 0, 131: 0, 132: 0, 133: 0, 134: 0, 135: 0, 136: 0, 137: 0, 138: 0, 139: 0, 140: 0, 141: 0, 142: 0, 143: 0, 144: 0, 145: 0, 146: 0, 147: 0, 148: 0, 149: 0, 150: 0 };
+  // Fusionne les meilleurs scores sauvegardés par-dessus les zéros par
+  // défaut — un niveau jamais joué (ou ajouté depuis la dernière visite)
+  // garde 0 plutôt que de planter sur une valeur absente.
+  Object.assign(bestScores, loadJSONPref('deadsector-best-scores', {}));
+  let currentLevel = 1;
+  let pendingBriefingLevel = null;
+  let currentRoomIndex = 0;
+  let levelCasualties = new Set(); // operators lost permanently for the rest of this level attempt
+  let roomScores = [];
+  let isNight = false;
+
+  function currentRoom() {
+    return levelDefs[currentLevel].rooms[currentRoomIndex];
+  }
+
+  function applyLevelVisibility() {
+    const room = currentRoom();
+    document.querySelectorAll('.door').forEach(g => {
+      const doorId = g.getAttribute('data-door');
+      g.style.display = room.doors.includes(doorId) ? '' : 'none';
+    });
+    const isBomb = room.type === 'bomb';
+    document.getElementById('t1-g').style.display = (!isBomb && room.threats.includes('T1')) ? '' : 'none';
+    document.getElementById('t2-g').style.display = (!isBomb && room.threats.includes('T2')) ? '' : 'none';
+    document.getElementById('t3-g').style.display = (!isBomb && room.threats.includes('T3')) ? '' : 'none';
+    document.getElementById('t4-g').style.display = (!isBomb && room.threats.includes('T4')) ? '' : 'none';
+    document.getElementById('t5-g').style.display = (!isBomb && room.threats.includes('T5')) ? '' : 'none';
+    document.getElementById('t6-g').style.display = (!isBomb && room.threats.includes('T6')) ? '' : 'none';
+    document.getElementById('bomb-g').style.display = isBomb ? '' : 'none';
+    // Tireur d'élite : viseur affiché uniquement sur la menace désignée par
+    // room.sniper (jamais T2, protégé par sa propre mécanique de bouclier).
+    ['T1', 'T3', 'T4', 'T5', 'T6'].forEach(id => {
+      const mark = document.getElementById(id.toLowerCase() + '-g').querySelector('.sniper-mark');
+      if (mark) mark.style.display = (!isBomb && room.sniper === id) ? '' : 'none';
+    });
+  }
+
+  function resetRoomVisuals() {
+    document.querySelectorAll('#room-svg .op-marker').forEach(m => m.remove());
+    document.getElementById('t1-g').style.opacity = '';
+    document.getElementById('t2-g').style.opacity = '';
+    document.getElementById('t3-g').style.opacity = '';
+    document.getElementById('t4-g').style.opacity = '';
+    document.getElementById('t5-g').style.opacity = '';
+    document.getElementById('t6-g').style.opacity = '';
+    document.getElementById('bomb-g').style.opacity = '';
+    const hostageCircle = document.getElementById('t2-g').querySelector('.hostage-mark');
+    hostageCircle.setAttribute('fill', '#c9c4b0');
+    const timerFill = document.getElementById('bomb-timer-fill');
+    timerFill.style.transition = 'none';
+    timerFill.setAttribute('width', '80');
+    timerFill.setAttribute('fill', 'var(--danger)');
+  }
+
+  function updateMissionTag() {
+    const tag = document.getElementById('mission-tag');
+    const def = levelDefs[currentLevel];
+    const room = currentRoom();
+    const timeLabel = isNight ? t('nightLabel') : t('dayLabel');
+    const roomPart = def.rooms.length > 1 ? ' · ' + t('roomLabel') + ' ' + (currentRoomIndex + 1) + '/' + def.rooms.length : '';
+    tag.textContent = t('levelLabel') + ' ' + currentLevel + ' · ' + timeLabel + roomPart + ' · ' + room.doors.length + ' ' + t('entryPointsLabel');
+    const objectiveEl = document.getElementById('brief-objective');
+    if (room.type === 'bomb') {
+      objectiveEl.textContent = t('objectiveBomb');
+    } else if (room.threats.includes('T2')) {
+      objectiveEl.textContent = t('objectiveHostage');
+    } else {
+      objectiveEl.textContent = t('objectiveNeutralize');
+    }
+  }
+
+  function isLevelUnlocked(id) {
+    const n = Number(id);
+    return n <= 1 || bestScores[n - 1] > 0;
+  }
+
+  function renderLevelList() {
+    const list = document.getElementById('level-list');
+    list.innerHTML = '';
+    Object.keys(levelDefs).forEach(id => {
+      const def = levelDefs[id];
+      const unlocked = isLevelUnlocked(id);
+      const card = document.createElement('div');
+      card.className = 'level-card' + (unlocked ? '' : ' locked');
+      if (unlocked) {
+        card.innerHTML =
+          '<div><div class="lc-title">' + getLevelField(id, 'name') + '</div><div class="lc-sub">' + getLevelField(id, 'sub') + '</div></div>' +
+          '<div class="lc-score"><span class="lbl">' + t('bestScore') + '</span>' + bestScores[id].toLocaleString('fr-CA') + '</div>';
+        card.addEventListener('click', () => showBriefing(Number(id)));
+      } else {
+        card.innerHTML =
+          '<div><div class="lc-title">' + getLevelField(id, 'name') + '</div><div class="lc-sub">' + getLevelField(id, 'sub') + '</div></div>' +
+          '<div class="lc-score"><span class="lbl">🔒</span>' + t('levelLockedLabel') + '</div>';
+        card.addEventListener('click', () => showToast(t('levelLockedToast')));
+      }
+      list.appendChild(card);
+    });
+  }
+
+  // Portrait d'opérateur affiché en vignette sur le briefing, selon la
+  // famille de camouflage de l'environnement (urbain sert pour résidence,
+  // entrepôt, bureaux et banque, qui partagent tous ce camouflage).
+  // Portraits d'opérateurs par classe x environnement (Shadow ignore le camouflage).
+  const ENV_OPERATOR_IMG = {
+    urbain: './op-urbain.png',
+    desert: './op-desert.png',
+    jungle: './op-jungle.png',
+    arctique: './op-arctique.png',
+  };
+  // Variantes du portrait de briefing par skin d'arme débloqué (Assault
+  // seulement — c'est la seule classe montrée en briefing, et la seule à
+  // porter le M4 skinnable). Retombe sur le portrait de base tant qu'aucun
+  // skin n'est débloqué.
+  const ENV_OPERATOR_IMG_SKINNED = {
+    urbain: { cuivre: './op-urbain-cuivre.png', argent: './op-urbain-argent.png', or: './op-urbain-or.png', damas: './op-urbain-damas.png', platine: './op-urbain-platine.png', diamant: './op-urbain-diamant.png' },
+    desert: { cuivre: './op-desert-cuivre.png', argent: './op-desert-argent.png', or: './op-desert-or.png', damas: './op-desert-damas.png', platine: './op-desert-platine.png', diamant: './op-desert-diamant.png' },
+    jungle: { cuivre: './op-jungle-cuivre.png', argent: './op-jungle-argent.png', or: './op-jungle-or.png', damas: './op-jungle-damas.png', platine: './op-jungle-platine.png', diamant: './op-jungle-diamant.png' },
+    arctique: { cuivre: './op-arctique-cuivre.png', argent: './op-arctique-argent.png', or: './op-arctique-or.png', damas: './op-arctique-damas.png', platine: './op-arctique-platine.png', diamant: './op-arctique-diamant.png' },
+  };
+  function getBriefingOperatorImg(env) {
+    const skin = getEquippedSkin();
+    const bySkin = skin && ENV_OPERATOR_IMG_SKINNED[env] && ENV_OPERATOR_IMG_SKINNED[env][skin.slug];
+    return bySkin || ENV_OPERATOR_IMG[env] || '';
+  }
+  const ENV_ENEMY_IMG = {
+    urbain: './enemy-urbain.png',
+    desert: './enemy-desert.png',
+    jungle: './enemy-jungle.png',
+    arctique: './enemy-arctique.png',
+  };
+  const CLASS_ENV_OPERATOR_IMG = {
+    Assault: ENV_OPERATOR_IMG,
+    Heavy: { urbain: './op-heavy-urbain.png', desert: './op-heavy-desert.png', jungle: './op-heavy-jungle.png', arctique: './op-heavy-arctique.png' },
+    Light: { urbain: './op-light-urbain.png', desert: './op-light-desert.png', jungle: './op-light-jungle.png', arctique: './op-light-arctique.png' },
+  };
+  const SHADOW_OPERATOR_IMG = './op-shadow.png';
+  function getOperatorPortrait(cls, env) {
+    if (cls === 'Shadow') return SHADOW_OPERATOR_IMG;
+    const set = CLASS_ENV_OPERATOR_IMG[cls] || ENV_OPERATOR_IMG;
+    return set[env] || set.urbain;
+  }
+
+  // Palettes de plancher/mur par environnement — donne à chaque famille de
+  // camouflage sa propre ambiance de pièce, plutôt qu'un même vert olive partout.
+  const ROOM_PALETTES = {
+    urbain:   { floor: '#34372f', wall: '#565c52' },
+    desert:   { floor: '#5a4a30', wall: '#7d6a45' },
+    jungle:   { floor: '#26331e', wall: '#3f5a30' },
+    arctique: { floor: '#7c8a90', wall: '#a8b6bc' },
+  };
+  function darkenHex(hex, factor) {
+    const n = parseInt(hex.slice(1), 16);
+    const r = Math.round(((n >> 16) & 255) * factor);
+    const g = Math.round(((n >> 8) & 255) * factor);
+    const b = Math.round((n & 255) * factor);
+    return '#' + [r, g, b].map(v => v.toString(16).padStart(2, '0')).join('');
+  }
+  function applyRoomTheme(env) {
+    const palette = ROOM_PALETTES[env] || ROOM_PALETTES.urbain;
+    const factor = isNight ? 0.28 : 1;
+    document.documentElement.style.setProperty('--floor', darkenHex(palette.floor, factor));
+    document.documentElement.style.setProperty('--wall', darkenHex(palette.wall, factor));
+  }
+
+  // --- Paliers de progression séquentiels (niveaux 1-15, puis 16-30, etc.) ---
+  const LEVEL_MILESTONE_STEP = 15;
+  // Échelle de prestige du karambit : palier 1 (15 niveaux) = le moins prestigieux,
+  // palier 10 (150 niveaux) = le rainbow Damascus, la récompense ultime.
+  // Seul le fini du palier 10 est illustré pour l'instant (image fournie) ;
+  // les autres réutilisent temporairement la même image en attendant leurs visuels dédiés.
+  const MILESTONE_TIERS = [
+    { nameKey: 'tierName1', img: './knife-tier1.jpg' },
+    { nameKey: 'tierName2', img: './knife-tier2.jpg' },
+    { nameKey: 'tierName3', img: './knife-tier3.jpg' },
+    { nameKey: 'tierName4', img: './knife-tier4.jpg' },
+    { nameKey: 'tierName5', img: './knife-tier5.jpg' },
+    { nameKey: 'tierName6', img: './knife-tier6.jpg' },
+    { nameKey: 'tierName7', img: './knife-tier7.jpg' },
+    { nameKey: 'tierName8', img: './knife-tier8.jpg' },
+    { nameKey: 'tierName9', img: './knife-tier9.jpg' },
+    { nameKey: 'tierName10', img: './knife-tier10.jpg' },
+  ];
+  function checkLevelMilestone() {
+    const shownTier = loadIntPref('deadsector-milestone-tier', 0);
+    const nextTier = shownTier + 1;
+    const rangeStart = shownTier * LEVEL_MILESTONE_STEP + 1;
+    const rangeEnd = nextTier * LEVEL_MILESTONE_STEP;
+    if (!levelDefs[rangeEnd]) return; // ce palier n'existe pas encore dans le contenu actuel
+    for (let id = rangeStart; id <= rangeEnd; id++) {
+      if (!(bestScores[id] > 0)) return; // palier pas encore complété en entier, dans l'ordre
+    }
+    saveIntPref('deadsector-milestone-tier', nextTier);
+    const tierInfo = MILESTONE_TIERS[nextTier - 1] || MILESTONE_TIERS[MILESTONE_TIERS.length - 1];
+    renderKnifeProgress();
+    setTimeout(() => {
+      showCelebration({
+        label: t('knifeTierWord') + ' ' + nextTier + '/10' + t('knifeReachedSuffix'),
+        img: tierInfo.img,
+        title: rangeEnd + t('knifeLevelsCompletedSuffix'),
+        sub: t(tierInfo.nameKey) + t('knifeUnlockedSuffix'),
+      });
+    }, 700);
+  }
+
+  // Carte de progression du karambit affichée en permanence en haut du menu :
+  // montre le palier actuellement débloqué et l'effort restant (sur 15)
+  // avant le prochain, plutôt qu'une jauge globale sur 150 qui bouge lentement.
+  function renderKnifeProgress() {
+    const shownTier = loadIntPref('deadsector-milestone-tier', 0);
+    const img = document.getElementById('knife-progress-img');
+    const nameEl = document.getElementById('knife-progress-name');
+    const tierEl = document.getElementById('knife-progress-tier');
+    const fillEl = document.getElementById('knife-progress-bar-fill');
+    const subEl = document.getElementById('knife-progress-sub');
+
+    const currentTierInfo = shownTier > 0 ? MILESTONE_TIERS[shownTier - 1] : null;
+    img.src = currentTierInfo ? currentTierInfo.img : SHADOW_OPERATOR_IMG;
+    nameEl.textContent = currentTierInfo ? t(currentTierInfo.nameKey) : t('knifeBaseLabel');
+    tierEl.textContent = t('knifeTierWord') + ' ' + shownTier + '/10';
+
+    if (shownTier >= MILESTONE_TIERS.length) {
+      fillEl.style.width = '100%';
+      subEl.textContent = '';
+      return;
+    }
+    const rangeStart = shownTier * LEVEL_MILESTONE_STEP + 1;
+    const rangeEnd = rangeStart + LEVEL_MILESTONE_STEP - 1;
+    let completed = 0;
+    for (let id = rangeStart; id <= rangeEnd; id++) {
+      if (bestScores[id] > 0) completed++;
+    }
+    fillEl.style.width = Math.round((completed / LEVEL_MILESTONE_STEP) * 100) + '%';
+    subEl.textContent = completed + '/' + LEVEL_MILESTONE_STEP + t('knifeProgressToNextSuffix');
+  }
+
+  // Gabarits de forme de pièce selon le type de lieu. "square" reproduit
+  // exactement la géométrie d'origine ; "L" et "elongated" donnent une vraie
+  // silhouette distincte (entrepôt/hangar, et navire/train/station).
+  // Petite rose des vents décorative, en remplacement des lettres de point
+  // cardinal sur chaque porte — une seule référence d'orientation, dans le
+  // coin supérieur gauche de la pièce, peu importe sa forme.
+  const COMPASS_ROSE_SVG =
+    '<g opacity="0.88" pointer-events="none">' +
+    '<circle cx="6" cy="6" r="14" fill="var(--panel)" fill-opacity="0.55" stroke="var(--wall)" stroke-width="1.8"/>' +
+    '<polygon points="6,-7 1.8,9.5 6,4.5 10.2,9.5" fill="var(--amber-dim)"/>' +
+    '<text x="6" y="-10" text-anchor="middle" font-family="var(--font-body)" font-weight="700" font-size="10" fill="var(--text)">N</text>' +
+    '</g>';
+
+  const ROOM_SHAPES = {
+    square: {
+      viewBox: '-20 -20 340 340',
+      floorWallsSVG: '<rect x="20" y="20" width="260" height="260" fill="var(--floor)" rx="2"/>' +
+        '<rect x="20" y="20" width="260" height="260" fill="none" stroke="var(--wall)" stroke-width="6" rx="2"/>' +
+        '<rect x="60" y="60" width="40" height="18" fill="var(--wall)"/>' +
+        '<rect x="245" y="245" width="25" height="25" fill="var(--wall)"/>' +
+        '<rect x="95" y="20" width="6" height="55" fill="var(--wall)"/>' +
+        COMPASS_ROSE_SVG,
+      center: { x: 150, y: 150 },
+      doors: { N:{x:150,y:20}, NE:{x:280,y:80}, E:{x:280,y:220}, S:{x:150,y:280}, W:{x:20,y:150}, F:{x:20,y:220} },
+      t1: { x: 175, y: 85 }, t2: { x: 115, y: 205 }, t3: { x: 230, y: 150 }, bomb: { x: 175, y: 70 },
+      t4: { x: 155, y: 250 }, t5: { x: 70, y: 150 }, t6: { x: 65, y: 240 },
+    },
+    L: {
+      viewBox: '-20 -20 400 420',
+      floorWallsSVG: '<path d="M20,20 L280,20 L280,160 L160,160 L160,360 L20,360 Z" fill="var(--floor)"/>' +
+        '<path d="M20,20 L280,20 L280,160 L160,160 L160,360 L20,360 Z" fill="none" stroke="var(--wall)" stroke-width="6"/>' +
+        '<rect x="24" y="24" width="26" height="14" fill="var(--wall)"/>' +
+        '<rect x="24" y="164" width="26" height="14" fill="var(--wall)"/>' +
+        COMPASS_ROSE_SVG,
+      center: { x: 150, y: 190 },
+      doors: { N:{x:150,y:20}, NE:{x:280,y:60}, E:{x:280,y:120}, S:{x:90,y:360}, W:{x:20,y:260}, F:{x:20,y:80} },
+      // Repositionnés avec une marge de sécurité par rapport au coude du L
+      // (au moins portée Heavy + éventail = 87u) pour qu'aucun point d'arrêt
+      // calculé ne puisse déborder dans le vide, quelle que soit la classe.
+      t1: { x: 230, y: 70 }, t2: { x: 90, y: 280 }, t3: { x: 70, y: 60 }, bomb: { x: 230, y: 70 },
+      t4: { x: 150, y: 90 }, t5: { x: 75, y: 210 }, t6: { x: 130, y: 340 },
+      // Coude de la forme en L : les portes du bras du bas (S, W) doivent
+      // passer par ce point avant de rejoindre T1/T3/T4 (bras du haut), et
+      // inversement pour NE/E vers T2/T5/T6 (bras du bas) — sinon le trajet
+      // en ligne droite couperait à travers le vide de l'encoche du L.
+      waypoints: { T1: { x: 140, y: 145 }, T3: { x: 140, y: 145 }, T2: { x: 140, y: 145 }, T4: { x: 140, y: 145 }, T5: { x: 140, y: 145 }, T6: { x: 140, y: 145 } },
+      waypointDoors: { T1: ['S', 'W'], T3: ['S', 'W'], T2: ['NE', 'E'], T4: ['S', 'W'], T5: ['NE', 'E'], T6: ['NE', 'E'] },
+    },
+    elongated: {
+      viewBox: '-20 -20 540 240',
+      floorWallsSVG: '<rect x="20" y="20" width="460" height="160" fill="var(--floor)" rx="2"/>' +
+        '<rect x="20" y="20" width="460" height="160" fill="none" stroke="var(--wall)" stroke-width="6" rx="2"/>' +
+        '<rect x="24" y="24" width="26" height="14" fill="var(--wall)"/>' +
+        '<rect x="400" y="154" width="26" height="14" fill="var(--wall)"/>' +
+        '<rect x="170" y="20" width="8" height="50" fill="var(--wall)"/>' +
+        COMPASS_ROSE_SVG,
+      center: { x: 250, y: 100 },
+      doors: { N:{x:140,y:20}, NE:{x:480,y:50}, E:{x:480,y:140}, S:{x:140,y:180}, W:{x:20,y:90}, F:{x:300,y:20} },
+      t1: { x: 230, y: 60 }, t2: { x: 400, y: 130 }, t3: { x: 300, y: 150 }, bomb: { x: 230, y: 60 },
+      t4: { x: 60, y: 150 }, t5: { x: 350, y: 60 }, t6: { x: 240, y: 140 },
+      // Salle globalement convexe, MAIS la petite cloison sous le mur du haut
+      // (x=170-178, y=20-70) peut couper un trajet en ligne droite depuis la
+      // porte N (et, à la marge, W vers T1) — détecté par vérification
+      // géométrique automatisée. Un point de passage sous la cloison
+      // (x=150, hors de sa plage x, y=90, sous sa plage y) règle les 6 cas
+      // affectés sans risquer de nouvelle collision (vérifié).
+      waypoints: { T1: { x: 150, y: 90 }, T2: { x: 150, y: 90 }, T3: { x: 150, y: 90 }, T5: { x: 150, y: 90 }, T6: { x: 150, y: 90 } },
+      waypointDoors: { T1: ['N', 'W'], T2: ['N'], T3: ['N'], T5: ['N'], T6: ['N'] },
+    },
+    hourglass: {
+      // Deux pièces (haut/bas) reliées par un corridor étroit — inspiré des
+      // croquis fournis. Un trajet en ligne droite depuis un point d'entrée
+      // excentré traverserait le vide de part et d'autre du corridor, d'où
+      // les deux points de passage distincts selon la direction.
+      viewBox: '-20 -20 340 420',
+      floorWallsSVG: '<path d="M20,20 L280,20 L280,140 L210,140 L210,220 L280,220 L280,340 L20,340 L20,220 L90,220 L90,140 L20,140 Z" fill="var(--floor)"/>' +
+        '<path d="M20,20 L280,20 L280,140 L210,140 L210,220 L280,220 L280,340 L20,340 L20,220 L90,220 L90,140 L20,140 Z" fill="none" stroke="var(--wall)" stroke-width="6"/>' +
+        '<rect x="24" y="24" width="26" height="14" fill="var(--wall)"/>' +
+        '<rect x="24" y="224" width="26" height="14" fill="var(--wall)"/>' +
+        COMPASS_ROSE_SVG,
+      center: { x: 150, y: 180 },
+      doors: { N: { x: 150, y: 20 }, NE: { x: 280, y: 80 }, E: { x: 280, y: 280 }, S: { x: 150, y: 340 }, W: { x: 20, y: 280 }, F: { x: 20, y: 80 } },
+      t1: { x: 150, y: 80 }, t2: { x: 150, y: 280 }, t3: { x: 190, y: 320 }, bomb: { x: 150, y: 80 },
+      t4: { x: 220, y: 100 }, t5: { x: 220, y: 250 }, t6: { x: 80, y: 300 },
+      // Descendre (vers T2/T3, en bas) passe par l'entrée haute du corridor ;
+      // monter (vers T1, en haut) passe par son entrée basse — deux points
+      // distincts, sinon le trajet dérive hors du corridor à mi-chemin. T1/
+      // T2/T3 restent sur l'axe du corridor (x=150), donc un seul point
+      // suffit pour eux.
+      waypoints: {
+        T1: { x: 150, y: 220 },
+        T2: { x: 150, y: 140 },
+        T3: { x: 150, y: 140 },
+      },
+      waypointDoors: { T1: ['E', 'W'], T2: ['NE', 'F'], T3: ['NE', 'F'] },
+      // T4/T5/T6 sont volontairement décalés hors de l'axe du corridor (pour
+      // ne pas s'empiler sur T1/T2/T3) : un seul point de passage ne suffit
+      // plus ici, il faut d'abord traverser aligné sur le corridor, PUIS
+      // seulement glisser latéralement une fois pleinement dans la bonne
+      // salle (sûre sur toute sa largeur, une fois le corridor franchi).
+      multiWaypoints: {
+        T4: {
+          E: [{ x: 150, y: 220 }, { x: 150, y: 135 }],
+          S: [{ x: 150, y: 220 }, { x: 150, y: 135 }],
+          W: [{ x: 150, y: 220 }, { x: 150, y: 135 }],
+        },
+        T5: {
+          N: [{ x: 150, y: 140 }, { x: 150, y: 225 }],
+          NE: [{ x: 150, y: 140 }, { x: 150, y: 225 }],
+          F: [{ x: 150, y: 140 }, { x: 150, y: 225 }],
+        },
+        T6: {
+          N: [{ x: 150, y: 140 }, { x: 150, y: 225 }],
+          NE: [{ x: 150, y: 140 }, { x: 150, y: 225 }],
+          F: [{ x: 150, y: 140 }, { x: 150, y: 225 }],
+        },
+      },
+    },
+    arch: {
+      // Deux ailes parallèles reliées par une large barre en haut, ouvertes
+      // en bas (inspiré du croquis en Π) — un vide sépare les deux ailes.
+      // Corridors volontairement larges dès le départ (leçon du sablier).
+      viewBox: '-25 -25 380 420',
+      floorWallsSVG: '<path d="M20,20 L320,20 L320,340 L190,340 L190,100 L150,100 L150,340 L20,340 Z" fill="var(--floor)"/>' +
+        '<path d="M20,20 L320,20 L320,340 L190,340 L190,100 L150,100 L150,340 L20,340 Z" fill="none" stroke="var(--wall)" stroke-width="6"/>' +
+        '<rect x="30" y="45" width="40" height="18" fill="var(--wall)"/>' +
+        '<rect x="40" y="300" width="40" height="18" fill="var(--wall)"/>' +
+        COMPASS_ROSE_SVG,
+      center: { x: 170, y: 180 },
+      doors: { N: { x: 170, y: 20 }, NE: { x: 320, y: 60 }, E: { x: 320, y: 280 }, S: { x: 255, y: 340 }, W: { x: 20, y: 280 } },
+      // Repositionnés avec une marge de sécurité par rapport au vide central
+      // (au moins portée Heavy + éventail = 87u) pour qu'aucun point d'arrêt
+      // calculé ne puisse déborder dedans, quelle que soit la classe.
+      t1: { x: 270, y: 220 }, t2: { x: 70, y: 220 }, t3: { x: 300, y: 320 }, bomb: { x: 270, y: 220 },
+      t4: { x: 310, y: 260 }, t5: { x: 70, y: 150 }, t6: { x: 280, y: 150 },
+      // Seules les portes déjà situées dans la barre du haut (N, NE) peuvent
+      // traverser vers l'autre aile en toute sécurité ; les portes déjà au
+      // fond d'une aile (E, S, W) restent limitées à leur propre aile.
+      waypoints: {
+        T1: { x: 255, y: 60 },
+        T2: { x: 85, y: 60 },
+        T3: { x: 255, y: 60 },
+        T4: { x: 255, y: 60 },
+        T5: { x: 85, y: 60 },
+        T6: { x: 255, y: 60 },
+      },
+      waypointDoors: { T1: ['N'], T2: ['N', 'NE'], T3: ['N'], T4: ['N'], T5: ['N', 'NE'], T6: ['N'] },
+      // Portes déjà encastrées dans une aile (pas dans la barre du haut) qui
+      // doivent rejoindre la menace de l'AUTRE aile : un seul point de
+      // passage ne suffit pas ici, car la ligne vers ce point couperait
+      // elle-même le vide central. Il faut un vrai détour en deux temps :
+      // 1) remonter dans son propre couloir jusqu'à la barre, en visant le
+      //    CENTRE de l'aile (pas le mur lui-même — sans quoi l'opérateur
+      //    longe le mur/le mobilier sur tout le trajet) ;
+      // 2) traverser la barre à l'horizontale jusqu'au-dessus de l'aile
+      //    visée ; la descente finale vers la cible se fait ensuite
+      //    normalement dans la bonne aile.
+      multiWaypoints: {
+        T1: { W: [{ x: 85, y: 60 }, { x: 255, y: 60 }] },
+        T3: { W: [{ x: 85, y: 60 }, { x: 255, y: 60 }] },
+        T4: { W: [{ x: 85, y: 60 }, { x: 255, y: 60 }] },
+        T6: { W: [{ x: 85, y: 60 }, { x: 255, y: 60 }] },
+        T2: {
+          E: [{ x: 255, y: 60 }, { x: 85, y: 60 }],
+          S: [{ x: 255, y: 60 }, { x: 85, y: 60 }],
+        },
+        T5: {
+          E: [{ x: 255, y: 60 }, { x: 85, y: 60 }],
+          S: [{ x: 255, y: 60 }, { x: 85, y: 60 }],
+        },
+      },
+    },
+    // CROIX — hub central + 4 bras cardinaux. Toute paire de bras non
+    // opposés/alignés doit transiter par le centre du hub (toujours sûr,
+    // quelle que soit la porte, puisqu'il est à l'intersection des 4 bras).
+    cross: {
+      viewBox: '-20 -20 420 420',
+      floorWallsSVG: '<path d="M120,20 L260,20 L260,120 L380,120 L380,260 L260,260 L260,380 L120,380 L120,260 L20,260 L20,120 L120,120 Z" fill="var(--floor)"/>' +
+        '<path d="M120,20 L260,20 L260,120 L380,120 L380,260 L260,260 L260,380 L120,380 L120,260 L20,260 L20,120 L120,120 Z" fill="none" stroke="var(--wall)" stroke-width="6"/>' +
+        COMPASS_ROSE_SVG,
+      center: { x: 190, y: 190 },
+      doors: { N: { x: 190, y: 20 }, E: { x: 380, y: 190 }, S: { x: 190, y: 380 }, W: { x: 20, y: 190 } },
+      t1: { x: 190, y: 190 }, t2: { x: 330, y: 190 }, t3: { x: 190, y: 330 }, t4: { x: 60, y: 190 }, t5: { x: 190, y: 60 }, t6: { x: 145, y: 145 }, bomb: { x: 190, y: 190 },
+      waypoints: { T2: { x: 190, y: 190 }, T3: { x: 190, y: 190 }, T4: { x: 190, y: 190 }, T5: { x: 190, y: 190 } },
+      waypointDoors: {
+        T2: ['N', 'S', 'W'], T3: ['N', 'E', 'W'], T4: ['N', 'E', 'S'], T5: ['E', 'S', 'W'],
+      },
+    },
+    // ANNEAU — couloir carré autour d'un îlot central condamné. Le vide est
+    // un seul bloc : les trajets adjacents restent directs, les 4 trajets
+    // "côté opposé" contournent par 1 ou 2 coins fixes (jamais de choix
+    // dynamique — une route unique par paire, comme partout ailleurs).
+    // Limité à 4 menaces (T1-T4, une par côté) : forcer 6 gardes sur une
+    // seule boucle aurait exigé des coins de garde trop fragiles à valider.
+    ring: {
+      viewBox: '-20 -20 420 420',
+      floorWallsSVG: '<path d="M20,20 L380,20 L380,380 L20,380 Z M140,140 L240,140 L240,240 L140,240 Z" fill="var(--floor)" fill-rule="evenodd"/>' +
+        '<path d="M20,20 L380,20 L380,380 L20,380 Z M140,140 L240,140 L240,240 L140,240 Z" fill="none" stroke="var(--wall)" stroke-width="6" fill-rule="evenodd"/>' +
+        COMPASS_ROSE_SVG,
+      center: { x: 190, y: 190 },
+      doors: { N: { x: 190, y: 20 }, NE: { x: 380, y: 80 }, E: { x: 380, y: 190 }, S: { x: 190, y: 380 }, W: { x: 20, y: 190 } },
+      t1: { x: 190, y: 80 }, t2: { x: 300, y: 190 }, t3: { x: 190, y: 300 }, t4: { x: 80, y: 190 }, bomb: { x: 190, y: 80 },
+      multiWaypoints: {
+        T1: { S: [{ x: 80, y: 300 }, { x: 80, y: 80 }] },
+        T2: { W: [{ x: 80, y: 80 }, { x: 300, y: 80 }] },
+        T3: { N: [{ x: 300, y: 80 }, { x: 300, y: 300 }], NE: [{ x: 300, y: 300 }] },
+        T4: { NE: [{ x: 80, y: 80 }], E: [{ x: 300, y: 80 }, { x: 80, y: 80 }] },
+      },
+    },
+    // COUR INTÉRIEURE — octogone convexe, aucun point de passage requis :
+    // une seule grande salle ouverte, contraste voulu avec les corridors
+    // étroits des autres formes.
+    courtyard: {
+      viewBox: '-20 -20 360 360',
+      floorWallsSVG: '<path d="M80,20 L260,20 L320,80 L320,260 L260,320 L80,320 L20,260 L20,80 Z" fill="var(--floor)"/>' +
+        '<path d="M80,20 L260,20 L320,80 L320,260 L260,320 L80,320 L20,260 L20,80 Z" fill="none" stroke="var(--wall)" stroke-width="6"/>' +
+        COMPASS_ROSE_SVG,
+      center: { x: 170, y: 170 },
+      doors: { N: { x: 170, y: 20 }, NE: { x: 290, y: 50 }, E: { x: 320, y: 170 }, S: { x: 170, y: 320 }, W: { x: 20, y: 170 } },
+      t1: { x: 170, y: 110 }, t2: { x: 250, y: 170 }, t3: { x: 170, y: 230 }, t4: { x: 90, y: 170 }, t5: { x: 230, y: 100 }, t6: { x: 110, y: 100 }, bomb: { x: 170, y: 110 },
+    },
+    // T RENVERSÉ — long hall d'accès + salle greffée en son centre (esprit
+    // "coffre de banque" isolé du hall par ses propres murs).
+    invertedT: {
+      viewBox: '-20 -20 440 360',
+      floorWallsSVG: '<path d="M20,20 L400,20 L400,130 L300,130 L300,320 L120,320 L120,130 L20,130 Z" fill="var(--floor)"/>' +
+        '<path d="M20,20 L400,20 L400,130 L300,130 L300,320 L120,320 L120,130 L20,130 Z" fill="none" stroke="var(--wall)" stroke-width="6"/>' +
+        COMPASS_ROSE_SVG,
+      center: { x: 210, y: 175 },
+      doors: { N: { x: 210, y: 20 }, NE: { x: 350, y: 20 }, E: { x: 400, y: 80 }, W: { x: 20, y: 80 }, S: { x: 210, y: 320 } },
+      t1: { x: 210, y: 80 }, t3: { x: 100, y: 80 }, t4: { x: 320, y: 80 },
+      t2: { x: 210, y: 280 }, t5: { x: 140, y: 280 }, t6: { x: 280, y: 280 }, bomb: { x: 210, y: 80 },
+      waypoints: { T2: { x: 210, y: 155 }, T5: { x: 210, y: 155 }, T6: { x: 210, y: 155 }, T1: { x: 210, y: 130 }, T3: { x: 210, y: 130 }, T4: { x: 210, y: 130 } },
+      waypointDoors: {
+        T2: ['N', 'NE', 'E', 'W'], T5: ['N', 'NE', 'E', 'W'], T6: ['N', 'NE', 'E', 'W'],
+        T1: ['S'], T3: ['S'], T4: ['S'],
+      },
+    },
+    // Z — sablier asymétrique : les deux salles sont décalées plutôt que
+    // centrées l'une sur l'autre, corridor de raccord excentré.
+    zshape: {
+      viewBox: '-20 -20 360 420',
+      floorWallsSVG: '<path d="M20,20 L280,20 L280,240 L320,240 L320,380 L60,380 L60,240 L160,240 L160,160 L20,160 Z" fill="var(--floor)"/>' +
+        '<path d="M20,20 L280,20 L280,240 L320,240 L320,380 L60,380 L60,240 L160,240 L160,160 L20,160 Z" fill="none" stroke="var(--wall)" stroke-width="6"/>' +
+        COMPASS_ROSE_SVG,
+      center: { x: 170, y: 200 },
+      doors: { N: { x: 150, y: 20 }, NE: { x: 280, y: 60 }, W: { x: 20, y: 90 }, E: { x: 320, y: 300 }, S: { x: 190, y: 380 } },
+      t1: { x: 150, y: 70 }, t4: { x: 70, y: 70 },
+      t2: { x: 200, y: 335 }, t3: { x: 280, y: 340 }, t6: { x: 100, y: 310 }, bomb: { x: 150, y: 70 },
+      waypoints: { T2: { x: 220, y: 170 }, T3: { x: 220, y: 170 } },
+      waypointDoors: { T2: ['N', 'NE', 'W'], T3: ['N', 'NE', 'W'] },
+      // T1/T4 (salle du haut) vus depuis E/S (salle du bas), et T6 (salle du
+      // bas, décalé à gauche) vu depuis N/NE/W (salle du haut) : un seul
+      // point ne suffit pas quand la cible est loin de l'axe du corridor —
+      // il faut d'abord traverser aligné sur le corridor, puis glisser
+      // latéralement une fois pleinement dans la salle sûre (toute sa
+      // largeur, une fois le corridor franchi).
+      multiWaypoints: {
+        T1: { E: [{ x: 220, y: 230 }, { x: 220, y: 150 }], S: [{ x: 220, y: 230 }, { x: 220, y: 150 }] },
+        T4: { E: [{ x: 220, y: 230 }, { x: 220, y: 150 }], S: [{ x: 220, y: 230 }, { x: 220, y: 150 }] },
+        T6: { N: [{ x: 220, y: 150 }, { x: 220, y: 245 }], NE: [{ x: 220, y: 150 }, { x: 220, y: 245 }], W: [{ x: 220, y: 150 }, { x: 220, y: 245 }] },
+      },
+    },
+  };
+
+  function applyRoomShape(shapeKey) {
+    const shape = ROOM_SHAPES[shapeKey] || ROOM_SHAPES.square;
+    document.getElementById('room-svg').setAttribute('viewBox', shape.viewBox);
+    document.getElementById('floor-walls-g').innerHTML = shape.floorWallsSVG;
+
+    Object.keys(shape.doors).forEach(id => {
+      const pos = shape.doors[id];
+      const g = document.querySelector('.door[data-door="' + id + '"]');
+      if (!g) return;
+      g.setAttribute('data-x', pos.x);
+      g.setAttribute('data-y', pos.y);
+      if (id === 'F') {
+        const rect = g.querySelector('rect');
+        rect.setAttribute('x', pos.x - 12);
+        rect.setAttribute('y', pos.y - 12);
+        const lines = g.querySelectorAll('line');
+        lines[0].setAttribute('x1', pos.x); lines[0].setAttribute('x2', pos.x);
+        lines[0].setAttribute('y1', pos.y - 12); lines[0].setAttribute('y2', pos.y + 12);
+        lines[1].setAttribute('y1', pos.y); lines[1].setAttribute('y2', pos.y);
+        lines[1].setAttribute('x1', pos.x - 12); lines[1].setAttribute('x2', pos.x + 12);
+      } else {
+        const circle = g.querySelector('circle.door-ring');
+        circle.setAttribute('cx', pos.x);
+        circle.setAttribute('cy', pos.y);
+      }
+      const countText = g.querySelector('.door-count');
+      countText.setAttribute('x', pos.x);
+      countText.setAttribute('y', pos.y + 4);
+    });
+
+    threats.T1.x = shape.t1.x; threats.T1.y = shape.t1.y;
+    const t1g = document.getElementById('t1-g');
+    const t1x = shape.t1.x, t1y = shape.t1.y;
+    t1g.querySelector('.enemy-body').setAttribute('cx', t1x); t1g.querySelector('.enemy-body').setAttribute('cy', t1y);
+    t1g.querySelector('.enemy-helmet').setAttribute('cx', t1x); t1g.querySelector('.enemy-helmet').setAttribute('cy', t1y - 6);
+    const t1weapon = t1g.querySelector('.enemy-weapon');
+    t1weapon.setAttribute('x', t1x - 1.3); t1weapon.setAttribute('y', t1y - 16);
+    repositionSniperMark(t1g, t1x, t1y);
+
+    threats.T2.x = shape.t2.x; threats.T2.y = shape.t2.y;
+    const t2g = document.getElementById('t2-g');
+    const cx2 = shape.t2.x, cy2 = shape.t2.y;
+    const relPoints = [[0,-12],[9,-7],[9,5],[0,12],[-9,5],[-9,-7]];
+    t2g.querySelector('polygon').setAttribute('points', relPoints.map(p => (cx2 + p[0]) + ',' + (cy2 + p[1])).join(' '));
+    t2g.querySelector('.enemy-helmet').setAttribute('cx', cx2); t2g.querySelector('.enemy-helmet').setAttribute('cy', cy2 - 17);
+    const t2weapon = t2g.querySelector('.enemy-weapon');
+    t2weapon.setAttribute('x', cx2 - 1.3); t2weapon.setAttribute('y', cy2 - 28);
+    const hostageCircle = t2g.querySelector('.hostage-mark');
+    hostageCircle.setAttribute('cx', cx2 + 17); hostageCircle.setAttribute('cy', cy2 + 9);
+    const hostageLine = t2g.querySelector('.hostage-line');
+    hostageLine.setAttribute('x1', cx2 + 17); hostageLine.setAttribute('x2', cx2 + 17);
+    hostageLine.setAttribute('y1', cy2 + 14); hostageLine.setAttribute('y2', cy2 + 21);
+
+    // Repositionne le viseur du tireur d'élite (sous-élément caché par
+    // défaut) au-dessus du casque d'un garde, quelle que soit sa position
+    // réelle dans la forme de pièce active.
+    function repositionSniperMark(g, x, y) {
+      const mark = g.querySelector('.sniper-mark');
+      if (!mark) return;
+      const cy = y - 19;
+      mark.querySelector('circle').setAttribute('cx', x); mark.querySelector('circle').setAttribute('cy', cy);
+      const lines = mark.querySelectorAll('line');
+      lines[0].setAttribute('x1', x); lines[0].setAttribute('x2', x);
+      lines[0].setAttribute('y1', cy - 5); lines[0].setAttribute('y2', cy + 5);
+      lines[1].setAttribute('y1', cy); lines[1].setAttribute('y2', cy);
+      lines[1].setAttribute('x1', x - 5); lines[1].setAttribute('x2', x + 5);
+    }
+
+    // Repositionne un garde "simple" (même structure que T3-T6) — évite de
+    // répéter ce bloc pour chaque nouveau garde ajouté.
+    function repositionSimpleGuard(threatId, pos) {
+      threats[threatId].x = pos.x; threats[threatId].y = pos.y;
+      const g = document.getElementById(threatId.toLowerCase() + '-g');
+      g.querySelector('.enemy-body').setAttribute('cx', pos.x); g.querySelector('.enemy-body').setAttribute('cy', pos.y);
+      g.querySelector('.enemy-helmet').setAttribute('cx', pos.x); g.querySelector('.enemy-helmet').setAttribute('cy', pos.y - 6);
+      const weapon = g.querySelector('.enemy-weapon');
+      weapon.setAttribute('x', pos.x - 1.3); weapon.setAttribute('y', pos.y - 16);
+      repositionSniperMark(g, pos.x, pos.y);
+    }
+    ['t3', 't4', 't5', 't6'].forEach(key => {
+      if (shape[key]) repositionSimpleGuard(key.toUpperCase(), shape[key]);
+    });
+
+    const bombG = document.getElementById('bomb-g');
+    const bx = shape.bomb.x, by = shape.bomb.y;
+    const bombRects = bombG.querySelectorAll('rect');
+    bombRects[0].setAttribute('x', bx - 15); bombRects[0].setAttribute('y', by);
+    const bombCircle = bombG.querySelector('circle');
+    bombCircle.setAttribute('cx', bx); bombCircle.setAttribute('cy', by);
+    const bombLine = bombG.querySelector('line');
+    bombLine.setAttribute('x1', bx); bombLine.setAttribute('y1', by - 4);
+    bombLine.setAttribute('x2', bx + 4); bombLine.setAttribute('y2', by - 12);
+    const bombTexts = bombG.querySelectorAll('text');
+    bombTexts[0].setAttribute('x', bx); bombTexts[0].setAttribute('y', by + 2);
+    bombTexts[1].setAttribute('x', bx); bombTexts[1].setAttribute('y', by + 45);
+    bombRects[1].setAttribute('x', bx - 40); bombRects[1].setAttribute('y', by + 52);
+    const timerFill = document.getElementById('bomb-timer-fill');
+    timerFill.setAttribute('x', bx - 40); timerFill.setAttribute('y', by + 52);
+  }
+
+  function showBriefing(levelId) {
+    if (!isLevelUnlocked(levelId)) { showToast(t('levelLockedToast')); return; }
+    const def = levelDefs[levelId];
+    pendingBriefingLevel = levelId;
+    document.getElementById('overlay').classList.remove('show');
+    document.getElementById('celebration-overlay').classList.remove('show');
+    document.getElementById('briefing-image').src = def.briefImg || '';
+    document.getElementById('briefing-image').alt = getLevelField(levelId, 'name');
+    document.getElementById('briefing-operator').src = getBriefingOperatorImg(def.env);
+    document.getElementById('briefing-operator').alt = 'Opérateur Assault';
+    document.getElementById('briefing-enemy-img').src = ENV_ENEMY_IMG[def.env] || '';
+    document.getElementById('briefing-enemy-img').alt = 'Ennemi';
+    document.getElementById('briefing-title').textContent = getLevelField(levelId, 'name');
+    document.getElementById('briefing-text').textContent = getLevelField(levelId, 'brief') || '';
+    showScreen('briefing');
+  }
+  document.getElementById('briefing-back-btn').addEventListener('click', () => {
+    renderLevelList();
+    showScreen('menu');
+  });
+  document.getElementById('briefing-start-btn').addEventListener('click', () => {
+    if (pendingBriefingLevel != null) enterMission(pendingBriefingLevel);
+  });
+
+  function showScreen(name) {
+    document.getElementById('menu-screen').style.display = name === 'menu' ? 'flex' : 'none';
+    document.getElementById('briefing-screen').style.display = name === 'briefing' ? 'flex' : 'none';
+    document.getElementById('mission-screen').style.display = name === 'mission' ? 'flex' : 'none';
+  }
+
+  function enterMission(levelId) {
+    currentLevel = levelId;
+    currentRoomIndex = 0;
+    levelCasualties = new Set();
+    roomScores = [];
+    isNight = !!levelDefs[levelId].night;
+    document.body.classList.toggle('night', isNight);
+    applyRoomTheme(levelDefs[levelId].env);
+    applyRoomShape(levelDefs[levelId].roomShape);
+    for (const k in assignments) delete assignments[k];
+    selectedOp = null;
+    resolved = false;
+    composeMode = false;
+    document.getElementById('overlay').classList.remove('show');
+    document.getElementById('compose-btn').classList.remove('active');
+    document.getElementById('compose-btn').textContent = 'Composer';
+    applyLevelVisibility();
+    resetRoomVisuals();
+    updateMissionTag();
+    hint.textContent = t('selectOperatorHint');
+    renderAll();
+    showScreen('mission');
+  }
+
+  function enterRoom(index) {
+    currentRoomIndex = index;
+    for (const k in assignments) delete assignments[k];
+    selectedOp = null;
+    resolved = false;
+    document.getElementById('overlay').classList.remove('show');
+    applyLevelVisibility();
+    resetRoomVisuals();
+    updateMissionTag();
+    hint.textContent = t('selectOperatorHint');
+    renderAll();
+  }
+
+  document.getElementById('back-btn').addEventListener('click', () => {
+    renderLevelList();
+    showScreen('menu');
+  });
+  document.getElementById('menu-return-btn').addEventListener('click', () => {
+    document.getElementById('overlay').classList.remove('show');
+    renderLevelList();
+    showScreen('menu');
+  });
+  document.getElementById('menu-compose-btn').addEventListener('click', () => {
+    enterMission(currentLevel);
+    toggleCompose();
+  });
+
+  // --- Ad-based cosmetic skin unlocks (simulated) ---
+  const skinDefs = [
+    { nameKey: 'skinFortune', slug: 'fortune', req: 5, img: './skin-fortune.jpg', color: '#c9a24a' },
+    { nameKey: 'skinCamouflage', slug: 'camouflage', req: 10, img: './skin-camouflage.jpg', color: '#5a6b46' },
+    { nameKey: 'skinBlindage', slug: 'blindage', req: 15, img: './skin-blindage.jpg', color: '#8c8f94' },
+    { nameKey: 'skinMacabre', slug: 'macabre', req: 25, img: './skin-macabre.jpg', color: '#e8e2d0' },
+    { nameKey: 'skinPatine', slug: 'patine', req: 35, img: './skin-patine.jpg', color: '#7a5c4a' },
+    { nameKey: 'skinDore', slug: 'dore', req: 50, img: './skin-dore.jpg', color: '#d4af37' },
+  ];
+  // Le skin M4 le plus haut déjà débloqué s'affiche automatiquement sur l'arme
+  // de l'Assault en mission (couleur) et sur le portrait de briefing (image
+  // dédiée par skin × environnement) — pas de sélecteur séparé, comme pour
+  // les paliers de prestige du karambit.
+  function getEquippedSkin() {
+    const unlocked = skinDefs.filter(s => adsWatched >= s.req);
+    return unlocked.length ? unlocked[unlocked.length - 1] : null;
+  }
+  function getEquippedSkinColor() {
+    const skin = getEquippedSkin();
+    return skin ? skin.color : null;
+  }
+  let adsWatched = loadIntPref('deadsector-ads-watched', 0);
+  let watchingAd = false;
+
+  function renderSkinTrack() {
+    document.getElementById('ads-count').textContent = adsWatched + (adsWatched === 1 ? t('adsWatchedSingular') : t('adsWatchedPlural'));
+    const track = document.getElementById('skin-track');
+    track.innerHTML = '';
+    skinDefs.forEach(s => {
+      const unlocked = adsWatched >= s.req;
+      const name = t(s.nameKey);
+      const chip = document.createElement('div');
+      chip.className = 'skin-chip' + (unlocked ? ' unlocked' : '');
+      chip.innerHTML = '<img class="sc-img" src="' + s.img + '" alt="' + name + '">' +
+        '<div class="sc-name">' + name + '</div><div class="sc-req">' + (unlocked ? t('adUnlockedLabel') : s.req + ' ' + t('adsReqUnit')) + '</div>';
+      chip.addEventListener('click', () => showSkinPreview(s, unlocked));
+      track.appendChild(chip);
+    });
+  }
+
+  // Aperçu au clic : montre le rendu réel du skin en grand, verrouillé ou
+  // non, sans jamais déclencher de pub — juste pour donner envie.
+  function showSkinPreview(skin, unlocked) {
+    document.getElementById('skin-preview-img').src = skin.img;
+    document.getElementById('skin-preview-title').textContent = t(skin.nameKey);
+    document.getElementById('skin-preview-status').textContent = unlocked ? t('adUnlockedLabel') : (t('lockedLabel') + ' — ' + skin.req + ' ' + t('adsReqUnit'));
+    document.getElementById('skin-preview-overlay').classList.add('show');
+  }
+
+  function showToast(msg) {
+    const toast = document.getElementById('toast');
+    toast.textContent = msg;
+    toast.classList.add('show');
+    clearTimeout(showToast._t);
+    showToast._t = setTimeout(() => toast.classList.remove('show'), 2600);
+  }
+
+  function showCelebration({ label, img, title, sub }) {
+    document.getElementById('celebration-label').textContent = label;
+    document.getElementById('celebration-img').src = img;
+    document.getElementById('celebration-title').textContent = title;
+    document.getElementById('celebration-sub').textContent = sub;
+    document.getElementById('celebration-overlay').classList.add('show');
+  }
+  document.getElementById('celebration-close-btn').addEventListener('click', () => {
+    document.getElementById('celebration-overlay').classList.remove('show');
+  });
+  document.getElementById('skin-preview-close-btn').addEventListener('click', () => {
+    document.getElementById('skin-preview-overlay').classList.remove('show');
+  });
+
+  // --- Pont AdMob natif (TWA PostMessage, Chrome 115+) ---
+  // Si l'app native (wrapper Android autour de la TWA) a établi le canal
+  // postMessage documenté par Google (developer.chrome.com/docs/android/
+  // post-message-twa), on l'utilise pour déclencher une VRAIE pub
+  // récompensée AdMob. Sinon (test dans un navigateur normal, ou app pas
+  // encore mise à jour avec le pont natif), on retombe sur la pub simulée
+  // — ça ne casse jamais le jeu, ça n'active juste pas les vraies pubs.
+  let nativeAdPort = null;
+  window.addEventListener('message', (event) => {
+    const port = event.ports && event.ports[0];
+    if (!port) return;
+    nativeAdPort = port;
+    nativeAdPort.onmessage = (portEvent) => {
+      let msg;
+      try { msg = JSON.parse(portEvent.data); } catch (e) { return; }
+      if (msg && msg.type === 'REWARDED_AD_RESULT') {
+        onAdResult(msg.success === true);
+      }
+    };
+  });
+
+  // --- AdsGram (Telegram Mini App) ---
+  // Réseau publicitaire natif aux Mini Apps Telegram — pas de pont requis,
+  // le SDK tourne directement dans la page. blockId 49198 = plateforme
+  // "BreachSix : Tactical Squad" sur partner.adsgram.ai (bloc Rewarded).
+  let adsgramController = null;
+  if (isTelegram && window.Adsgram) {
+    try { adsgramController = window.Adsgram.init({ blockId: '49198' }); } catch (e) {}
+  }
+
+  // OnClicka (onclicka.com) — second réseau publicitaire Telegram Mini App,
+  // utilisé en priorité pendant qu'AdsGram reste en réserve. Remplacer
+  // 'YOUR_ONCLICKA_SPOT_ID' par le vrai SPOT-ID fourni par OnClicka une
+  // fois la plateforme approuvée.
+  let onclickaShow = null;
+  if (isTelegram && window.initCdTma) {
+    window.initCdTma({ id: 'YOUR_ONCLICKA_SPOT_ID' })
+      .then(show => { onclickaShow = show; })
+      .catch(() => {});
+  }
+
+  // Monetag — troisième réseau publicitaire Telegram Mini App dans la
+  // chaîne de secours. MONETAG_SHOW_FN doit être remplacé par le nom exact
+  // généré par le tag SDK Monetag une fois le compte créé (voir commentaire
+  // du <script> Monetag dans le <head>) — ex. 'show_812345'.
+  const MONETAG_SHOW_FN = 'MONETAG_SHOW_FN_PLACEHOLDER';
+  function monetagShow() {
+    const fn = window[MONETAG_SHOW_FN];
+    if (typeof fn === 'function') return fn();
+    return Promise.reject(new Error('Monetag SDK non chargé'));
+  }
+
+  // --- Interrupteur de phase de test : simulation de pub privilégiée ---
+  // Tant que ce flag est à true, TOUTE demande de pub (bouton "Pub optionnelle")
+  // passe directement par la simulation ci-dessous, peu importe qu'OnClicka,
+  // Monetag, AdsGram ou le pont AdMob natif soient détectés/disponibles.
+  // La cascade réelle plus bas dans cette fonction reste intacte et inchangée :
+  // repasser ce flag à false suffit à la réactiver telle quelle, sans rien
+  // reconstruire, une fois la phase de test terminée.
+  const FORCE_AD_SIMULATION = true;
+
+  function requestRewardedAd() {
+    if (FORCE_AD_SIMULATION) {
+      // Phase de test en cours : simulation forcée, cascade réelle court-circuitée.
+      setTimeout(() => onAdResult(true), 1400);
+      return;
+    }
+    if (onclickaShow) {
+      // OnClicka : réseau publicitaire principal.
+      onclickaShow()
+        .then(() => onAdResult(true))
+        .catch(() => onAdResult(false));
+    } else if (isTelegram && typeof window[MONETAG_SHOW_FN] === 'function') {
+      // Monetag : deuxième réseau, en réserve si OnClicka n'est pas disponible.
+      monetagShow()
+        .then(() => onAdResult(true))
+        .catch(() => onAdResult(false));
+    } else if (adsgramController) {
+      // AdsGram (Telegram) : en réserve si OnClicka et Monetag ne sont pas disponibles.
+      adsgramController.show()
+        .then(() => onAdResult(true))
+        .catch(() => onAdResult(false));
+    } else if (nativeAdPort) {
+      // Le natif décide vraiment si la pub a été regardée jusqu'au bout —
+      // onAdResult() n'est appelé qu'à la réception de sa réponse.
+      nativeAdPort.postMessage(JSON.stringify({ type: 'REQUEST_REWARDED_AD' }));
+    } else {
+      // Ni Telegram ni pont natif détecté : simulation existante, inchangée.
+      setTimeout(() => onAdResult(true), 1400);
+    }
+  }
+
+
+  function onAdResult(success) {
+    watchingAd = false;
+    const btn = document.getElementById('watch-ad-btn');
+    btn.disabled = false;
+    btn.textContent = t('watchAdBtn');
+    if (!success) {
+      showToast(t('adFailedMsg'));
+      return;
+    }
+    adsWatched++;
+    saveIntPref('deadsector-ads-watched', adsWatched);
+    const justUnlocked = skinDefs.find(s => s.req === adsWatched);
+    renderSkinTrack();
+    if (justUnlocked) {
+      showCelebration({
+        label: t('skinUnlocked'),
+        img: justUnlocked.img,
+        title: t(justUnlocked.nameKey),
+        sub: t('adSkinAvailableSub'),
+      });
+    } else {
+      showToast(t('adWatchedToastPrefix') + adsWatched + ')');
+    }
+  }
+
+  document.getElementById('watch-ad-btn').addEventListener('click', () => {
+    if (watchingAd) return;
+    watchingAd = true;
+    const btn = document.getElementById('watch-ad-btn');
+    btn.disabled = true;
+    btn.textContent = t('watchAdBtnLoading');
+    requestRewardedAd();
+  });
+
+  // Le mode nuit est déterminé par le niveau lui-même (voir levelDefs[].night),
+  // pas par un choix du joueur — cohérent avec "~1 niveau sur 10 de nuit".
+
+  function onChipTap(op, isAssigned) {
+    if (resolved) return;
+    if (isAssigned) {
+      // unassign from wherever it's currently placed
+      for (const d in assignments) {
+        assignments[d] = assignments[d].filter(o => o.id !== op.id);
+        if (assignments[d].length === 0) delete assignments[d];
+      }
+      selectedOp = null;
+      hint.textContent = t('hintOperatorRemovedContinue');
+      renderAll();
+      return;
+    }
+    selectedOp = (selectedOp === op.id) ? null : op.id;
+    hint.textContent = selectedOp
+      ? 'Touche un point d\'entrée pour assigner cet opérateur.'
+      : 'Sélectionne un opérateur pour commencer.';
+    renderAll();
+  }
+
+  function onDoorTap(doorId) {
+    if (resolved || composeMode) return;
+    const current = assignments[doorId] || [];
+    if (selectedOp) {
+      const op = operators.find(o => o.id === selectedOp);
+      if (!assignments[doorId]) assignments[doorId] = [];
+      assignments[doorId].push(op);
+      selectedOp = null;
+      hint.textContent = t('hintAssigned');
+      renderAll();
+      return;
+    }
+    if (current.length > 0) {
+      // no operator selected: remove the most recently assigned one at this door
+      current.pop();
+      if (current.length === 0) delete assignments[doorId];
+      hint.textContent = t('hintOperatorRemovedFromDoor');
+      renderAll();
+      return;
+    }
+    hint.textContent = t('hintSelectFirst');
+  }
+
+  function renderDoors() {
+    document.querySelectorAll('.door').forEach(g => {
+      const doorId = g.getAttribute('data-door');
+      const ring = g.querySelector('.door-ring');
+      const countText = g.querySelector('.door-count');
+      const arr = assignments[doorId] || [];
+      if (arr.length > 0) {
+        const lastSquad = arr[arr.length - 1].squad;
+        ring.setAttribute('fill', lastSquad === 'a' ? 'var(--squad-a)' : 'var(--squad-b)');
+        ring.setAttribute('stroke', 'var(--text)');
+        if (countText) countText.textContent = arr.length > 1 ? String(arr.length) : '';
+      } else {
+        ring.setAttribute('fill', 'var(--panel)');
+        ring.setAttribute('stroke', 'var(--amber-dim)');
+        if (countText) countText.textContent = '';
+      }
+    });
+  }
+
+  function initDoors() {
+    document.querySelectorAll('.door').forEach(g => {
+      const doorId = g.getAttribute('data-door');
+      g.style.cursor = 'pointer';
+      g.addEventListener('click', () => onDoorTap(doorId));
+    });
+  }
+
+  function renderGo() {
+    const count = Object.values(assignments).reduce((sum, arr) => sum + arr.length, 0);
+    goBtn.disabled = count === 0 || resolved || composeMode;
+    goBtn.classList.toggle('ready', count > 0 && !resolved && !composeMode);
+  }
+
+  function renderAll() {
+    renderRoster();
+    renderDoors();
+    renderGo();
+  }
+
+  goBtn.addEventListener('click', runAssault);
+  // Certains navigateurs mobiles suspendent le contexte audio tant qu'aucun
+  // geste utilisateur n'a eu lieu — on s'assure qu'il tourne avant l'assaut.
+  document.addEventListener('pointerdown', () => {
+    const ctx = getAudioCtx();
+    if (ctx.state === 'suspended') ctx.resume();
+  }, { once: true });
+
+  function runAssault() {
+    if (resolved) return;
+    resolved = true;
+    // Sécurité supplémentaire : s'assurer que le contexte audio tourne
+    // vraiment avant que le premier son (bris de vitre, tirs) soit requis.
+    const ac = getAudioCtx();
+    if (ac.state === 'suspended') ac.resume();
+    renderAll();
+    hint.textContent = 'Assaut en cours...';
+    let trapSoundPlayed = false;
+
+    const room = currentRoom();
+    const svg = document.getElementById('room-svg');
+    const assignedList = [];
+    for (const doorId in assignments) {
+      assignments[doorId].forEach(op => assignedList.push([doorId, op]));
+    }
+
+    // Determine trap casualties (hidden mechanic: Heavy forcing the trapped door) — only if this room has the trap active
+    const casualtyIds = new Set();
+    if (room.trap) {
+      assignedList.forEach(([doorId, op]) => {
+        if (doorId === trappedDoor && op.cls === trapClass) casualtyIds.add(op.id);
+      });
+    }
+
+    const survivors = assignedList.filter(([, op]) => !casualtyIds.has(op.id));
+
+    // Smart target assignment: the squad splits up inside the room based on
+    // class strengths, regardless of which door each operator came through.
+    // Heavy/Shadow are best suited for the armored guard (T2); anyone can
+    // handle a standard guard (T1/T3). If only one non-T2 threat is active,
+    // everyone else converges on it.
+    const t2Rank = { Heavy: 0, Shadow: 1, Assault: 2, Light: 2 };
+    const targets = []; // { doorId, op, targetThreatId }
+    const hasT2 = room.threats.includes('T2');
+    const hasT3 = room.threats.includes('T3');
+    const hasT4 = room.threats.includes('T4');
+    const hasT5 = room.threats.includes('T5');
+    const hasT6 = room.threats.includes('T6');
+    const otherThreats = ['T1'];
+    if (hasT3) otherThreats.push('T3');
+    if (hasT4) otherThreats.push('T4');
+    if (hasT5) otherThreats.push('T5');
+    if (hasT6) otherThreats.push('T6');
+
+    if (!hasT2) {
+      survivors.forEach(([doorId, op], idx) => targets.push({ doorId, op, targetThreatId: otherThreats[idx % otherThreats.length] }));
+    } else if (survivors.length === 1) {
+      const [doorId, op] = survivors[0];
+      const t = (op.cls === 'Heavy' || op.cls === 'Shadow') ? 'T2' : 'T1';
+      targets.push({ doorId, op, targetThreatId: t });
+    } else if (survivors.length > 1) {
+      const pool = survivors.map(([doorId, op]) => ({ doorId, op }));
+      pool.sort((a, b) => t2Rank[a.op.cls] - t2Rank[b.op.cls]);
+      const bestForT2 = pool[0];
+      const rest = pool.slice(1);
+      targets.push({ ...bestForT2, targetThreatId: 'T2' });
+      // Remaining survivors split evenly across the other active threats,
+      // so a room with plusieurs gardes exige vraiment plusieurs opérateurs.
+      rest.forEach((entry, idx) => {
+        targets.push({ ...entry, targetThreatId: otherThreats[idx % otherThreats.length] });
+      });
+    }
+
+    const byThreat = {};
+    ['T1', 'T2', 'T3', 'T4', 'T5', 'T6'].forEach(id => {
+      byThreat[id] = targets.filter(t => t.targetThreatId === id).map(t => t.op);
+    });
+
+    function fastestOf(list) {
+      let f = list[0];
+      list.forEach(op => { if (classData[op.cls].speed > classData[f.cls].speed) f = op; });
+      return f;
+    }
+
+    const t1Cleared = byThreat.T1.length > 0;
+    const t2Cleared = !hasT2 || byThreat.T2.length > 0;
+    const t3Cleared = !hasT3 || byThreat.T3.length > 0;
+    const t4Cleared = !hasT4 || byThreat.T4.length > 0;
+    const t5Cleared = !hasT5 || byThreat.T5.length > 0;
+    const t6Cleared = !hasT6 || byThreat.T6.length > 0;
+    // Heavy and Shadow (karambit, up close) both handle the armored guard cleanly.
+    function isCleanT2Handler(op) {
+      return op.cls === 'Heavy' || op.cls === 'Shadow';
+    }
+    const hostageSafe = !hasT2 || (t2Cleared && byThreat.T2.some(isCleanT2Handler));
+
+    // L'ennemi riposte : envoyer un opérateur mal adapté (ni Heavy ni
+    // Shadow) seul contre le garde blindé lui coûte la vie, pas seulement
+    // la sécurité de l'otage — une vraie conséquence à une mauvaise
+    // répartition de l'escouade.
+    if (hasT2 && t2Cleared && !byThreat.T2.some(isCleanT2Handler)) {
+      const strickenOp = byThreat.T2.find(op => op.cls === 'Light') || byThreat.T2[0];
+      casualtyIds.add(strickenOp.id);
+    }
+
+    // Nouvelle mécanique de risque : un garde standard (pas seulement le
+    // garde blindé) peut lui aussi abattre l'opérateur qui lui fait face,
+    // s'il y est envoyé SEUL dans une pièce "renforcée" (3 gardes actifs ou
+    // plus au total, tous types confondus) — mal accompagné, il est exposé
+    // sur son flanc pendant que le reste de l'escouade se bat ailleurs.
+    // Assault (fusil, gilet) et Heavy (blindage) tiennent seuls sans
+    // risque. Light (peu protégé) ET Shadow (corps-à-corps, doit s'exposer
+    // pour approcher) sont tous deux vulnérables dans ce cas — la
+    // discrétion du karambit ne protège plus contre le feu croisé d'une
+    // pièce bondée, seulement contre le déclenchement de l'alerte.
+    const standardThreatFlags = { T1: true, T3: hasT3, T4: hasT4, T5: hasT5, T6: hasT6 };
+    const activeStandardThreatCount = Object.keys(standardThreatFlags).filter(id => standardThreatFlags[id]).length;
+    if (activeStandardThreatCount >= 3) {
+      Object.keys(standardThreatFlags).forEach(id => {
+        if (!standardThreatFlags[id]) return;
+        const assignedHere = byThreat[id];
+        if (assignedHere.length === 1 && (assignedHere[0].cls === 'Light' || assignedHere[0].cls === 'Shadow') && !casualtyIds.has(assignedHere[0].id)) {
+          casualtyIds.add(assignedHere[0].id);
+        }
+      });
+    }
+
+    // Tireur d'élite (paliers avancés) : certaines menaces visent à
+    // distance et abattent Shadow avant qu'il ait pu fermer la distance
+    // pour son corps-à-corps — peu importe s'il est seul ou accompagné, la
+    // discrétion ne sert à rien contre quelqu'un qui l'a déjà repéré de
+    // loin. Jamais appliqué à T2 (déjà régi par sa propre mécanique).
+    if (room.sniper && room.sniper !== 'T2' && room.threats.includes(room.sniper)) {
+      (byThreat[room.sniper] || []).forEach(op => {
+        if (op.cls === 'Shadow' && !casualtyIds.has(op.id)) casualtyIds.add(op.id);
+      });
+    }
+
+    // Purely cosmetic: the failure message when the hostage is hurt.
+    let hostageFailReason = null;
+    if (hasT2 && t2Cleared && !hostageSafe) {
+      hostageFailReason = 'gunfight';
+    }
+    const isBombRoom = room.type === 'bomb';
+    let bombDefused = true, bombFastDefuse = false, fastestArrivalMs = null;
+    if (isBombRoom) {
+      const arrivals = assignedList
+        .filter(([, op]) => !casualtyIds.has(op.id))
+        .map(([, op]) => 2200 - classData[op.cls].speed * 300);
+      fastestArrivalMs = arrivals.length ? Math.min(...arrivals) : null;
+      bombDefused = fastestArrivalMs !== null && fastestArrivalMs <= BOMB_THRESHOLD_MS;
+      bombFastDefuse = fastestArrivalMs !== null && fastestArrivalMs <= BOMB_FAST_MS;
+    }
+
+    const primarySuccess = isBombRoom ? (t1Cleared && bombDefused) : (t1Cleared && t2Cleared && t3Cleared && t4Cleared && t5Cleared && t6Cleared);
+    const noOperatorLost = casualtyIds.size === 0;
+    // At night, every weapon is fitted with a silencer regardless of class,
+    // so gunfire never gives the squad away. A bomb-only room has no enemy to
+    // shoot at all, so the objective is trivially met there too.
+    // Bonus "approche furtive" : uniquement si aucun combat n'a eu lieu
+    // (pièce bombe) ou si l'escouade envoyée est entièrement composée de
+    // Shadow (corps-à-corps silencieux). La nuit ne rend aucune arme à feu
+    // silencieuse — elle ne doit donc jamais accorder ce bonus à elle seule.
+    const stealthSuccess = isBombRoom || !assignedList.some(([, op]) => op.cls !== 'Shadow');
+
+    const slowestDuration = 2200 - (assignedList.length ? Math.min(...assignedList.map(([, op]) => classData[op.cls].speed)) * 300 : 0);
+
+    function makeOperatorMarker(op) {
+      const ns = 'http://www.w3.org/2000/svg';
+      const env = levelDefs[currentLevel].env || 'urbain';
+      const camo = op.cls === 'Shadow' ? SHADOW_PALETTE : CAMO_PALETTES[env];
+      const badgeColor = SQUAD_BADGE_COLOR[op.squad];
+
+      const g = document.createElementNS(ns, 'g');
+      g.classList.add('op-marker');
+      g.classList.add('cls-' + op.cls.toLowerCase());
+
+      // Sac à dos : à l'opposé de la direction visée (le dos), sous le corps.
+      const packByClass = {
+        Heavy: { x: -4.5, y: 8, w: 9, h: 6.5 },
+        Light: { x: -3.5, y: 6, w: 7, h: 5.5 },
+        Assault: { x: -3.5, y: 6.5, w: 7, h: 6 },
+        Shadow: { x: -3, y: 6, w: 6, h: 5 },
+      };
+      const pack = packByClass[op.cls];
+      const packEl = document.createElementNS(ns, 'rect');
+      packEl.setAttribute('x', pack.x); packEl.setAttribute('y', pack.y);
+      packEl.setAttribute('width', pack.w); packEl.setAttribute('height', pack.h);
+      packEl.setAttribute('rx', '2');
+      packEl.setAttribute('fill', camo.dark);
+      packEl.setAttribute('stroke', camo.outline);
+      packEl.setAttribute('stroke-width', '1');
+      g.appendChild(packEl);
+
+      // Corps : silhouette distincte par classe, teintée selon le camouflage
+      // de l'environnement (Shadow reste toujours noir, peu importe l'env).
+      let body;
+      if (op.cls === 'Heavy') {
+        body = document.createElementNS(ns, 'rect');
+        body.setAttribute('x', '-10'); body.setAttribute('y', '-10');
+        body.setAttribute('width', '20'); body.setAttribute('height', '20');
+        body.setAttribute('rx', '4');
+      } else if (op.cls === 'Light') {
+        body = document.createElementNS(ns, 'rect');
+        body.setAttribute('x', '-7'); body.setAttribute('y', '-8');
+        body.setAttribute('width', '14'); body.setAttribute('height', '16');
+        body.setAttribute('rx', '5');
+      } else if (op.cls === 'Shadow') {
+        body = document.createElementNS(ns, 'rect');
+        body.setAttribute('x', '-8'); body.setAttribute('y', '-8');
+        body.setAttribute('width', '16'); body.setAttribute('height', '16');
+        body.setAttribute('rx', '3');
+      } else {
+        body = document.createElementNS(ns, 'circle');
+        body.setAttribute('r', '9');
+      }
+      body.setAttribute('fill', camo.mid);
+      body.setAttribute('stroke', camo.outline);
+      body.setAttribute('stroke-width', '1.4');
+      body.classList.add('op-body');
+      g.appendChild(body);
+
+      // Motif de camouflage : deux petites taches (foncée/claire), absentes pour Shadow.
+      if (op.cls !== 'Shadow') {
+        const speck1 = document.createElementNS(ns, 'rect');
+        speck1.setAttribute('x', '-5'); speck1.setAttribute('y', '-6');
+        speck1.setAttribute('width', '6'); speck1.setAttribute('height', '3');
+        speck1.setAttribute('rx', '1'); speck1.setAttribute('fill', camo.dark);
+        g.appendChild(speck1);
+        const speck2 = document.createElementNS(ns, 'rect');
+        speck2.setAttribute('x', '0'); speck2.setAttribute('y', '2');
+        speck2.setAttribute('width', '5'); speck2.setAttribute('height', '3');
+        speck2.setAttribute('rx', '1'); speck2.setAttribute('fill', camo.light);
+        g.appendChild(speck2);
+      }
+
+      // Casque : distinct du corps, dépasse vers l'avant (direction de la cible).
+      const helmetByClass = {
+        Heavy: { cy: -13, r: 6 }, Light: { cy: -11, r: 5 },
+        Assault: { cy: -12, r: 5.5 }, Shadow: { cy: -11, r: 5.5 },
+      };
+      const helmet = helmetByClass[op.cls];
+      const helmetEl = document.createElementNS(ns, 'circle');
+      helmetEl.setAttribute('cx', '0'); helmetEl.setAttribute('cy', helmet.cy);
+      helmetEl.setAttribute('r', helmet.r);
+      helmetEl.setAttribute('fill', op.cls === 'Shadow' ? camo.mid : camo.dark);
+      helmetEl.setAttribute('stroke', camo.outline);
+      helmetEl.setAttribute('stroke-width', '1.2');
+      g.appendChild(helmetEl);
+
+      if (op.cls === 'Heavy' || op.cls === 'Assault') {
+        // Visière : ligne sombre au bas du casque
+        const visor = document.createElementNS(ns, 'line');
+        visor.setAttribute('x1', -helmet.r * 0.6); visor.setAttribute('x2', helmet.r * 0.6);
+        visor.setAttribute('y1', helmet.cy + helmet.r * 0.35); visor.setAttribute('y2', helmet.cy + helmet.r * 0.35);
+        visor.setAttribute('stroke', camo.outline);
+        visor.setAttribute('stroke-width', '1.4');
+        g.appendChild(visor);
+      } else if (op.cls === 'Light') {
+        // Casquette : petit rebord à l'avant du casque
+        const brim = document.createElementNS(ns, 'rect');
+        brim.setAttribute('x', '-3.5'); brim.setAttribute('y', helmet.cy - helmet.r - 0.5);
+        brim.setAttribute('width', '7'); brim.setAttribute('height', '1.6'); brim.setAttribute('rx', '0.8');
+        brim.setAttribute('fill', camo.outline);
+        g.appendChild(brim);
+      }
+
+      // Arme : rectangle net (rectiligne) + chargeur, absente pour Shadow (karambit visible à la place).
+      if (op.cls !== 'Shadow') {
+        const weaponWidth = op.cls === 'Heavy' ? 3.4 : (op.cls === 'Light' ? 2 : 2.6);
+        const weaponLen = op.cls === 'Heavy' ? 9 : (op.cls === 'Light' ? 6 : 7.5);
+        const weapon = document.createElementNS(ns, 'rect');
+        weapon.setAttribute('x', String(-weaponWidth / 2));
+        weapon.setAttribute('y', String(-9 - weaponLen));
+        weapon.setAttribute('width', String(weaponWidth));
+        weapon.setAttribute('height', String(weaponLen));
+        // Seul l'Assault porte le M4 : le skin le plus haut débloqué colore
+        // son arme directement en mission. Les autres classes (arme
+        // différente, jamais skinnée) gardent le rendu sombre habituel.
+        const equippedSkinColor = op.cls === 'Assault' ? getEquippedSkinColor() : null;
+        weapon.setAttribute('fill', equippedSkinColor || camo.outline);
+        g.appendChild(weapon);
+        g.dataset.weaponTipY = String(-9 - weaponLen);
+
+        // Chargeur : petit rectangle net près de la garde de l'arme.
+        const mag = document.createElementNS(ns, 'rect');
+        mag.setAttribute('x', '-3.4'); mag.setAttribute('y', '-11');
+        mag.setAttribute('width', '2.6'); mag.setAttribute('height', op.cls === 'Heavy' ? '6.5' : '5');
+        mag.setAttribute('fill', '#1a1a1a');
+        mag.setAttribute('stroke', camo.outline);
+        mag.setAttribute('stroke-width', '0.6');
+        g.appendChild(mag);
+      } else {
+        // Karambit : petite lame nette avec pointe angulaire, et son anneau.
+        const blade = document.createElementNS(ns, 'line');
+        blade.setAttribute('x1', '4'); blade.setAttribute('y1', '2');
+        blade.setAttribute('x2', '8.5'); blade.setAttribute('y2', '6.5');
+        blade.setAttribute('stroke', '#2c2c2c');
+        blade.setAttribute('stroke-width', '1.8');
+        blade.setAttribute('stroke-linecap', 'square');
+        g.appendChild(blade);
+        const tip = document.createElementNS(ns, 'polygon');
+        tip.setAttribute('points', '8.5,6.5 10.2,6.9 9.4,8.2');
+        tip.setAttribute('fill', '#2c2c2c');
+        g.appendChild(tip);
+        const ring = document.createElementNS(ns, 'circle');
+        ring.setAttribute('cx', '4'); ring.setAttribute('cy', '2'); ring.setAttribute('r', '1.4');
+        ring.setAttribute('fill', 'none');
+        ring.setAttribute('stroke', '#2c2c2c');
+        ring.setAttribute('stroke-width', '1');
+        g.appendChild(ring);
+      }
+
+      // Badge d'escouade : petit accent ambre/teal, pas la silhouette entière.
+      const badge = document.createElementNS(ns, 'circle');
+      badge.setAttribute('cx', '6'); badge.setAttribute('cy', '-6');
+      badge.setAttribute('r', '2.6');
+      badge.setAttribute('fill', badgeColor);
+      badge.setAttribute('stroke', camo.outline);
+      badge.setAttribute('stroke-width', '0.6');
+      g.appendChild(badge);
+
+      const label = document.createElementNS(ns, 'text');
+      label.setAttribute('text-anchor', 'middle');
+      label.setAttribute('dy', '3');
+      label.setAttribute('font-size', '8');
+      label.setAttribute('fill', camo.text);
+      label.textContent = op.cls[0];
+      g.appendChild(label);
+      return g;
+    }
+
+    // Minuterie de bombe : moment fixe (indépendant de la vitesse des
+    // opérateurs) où la bombe détone si personne ne l'a désamorcée à temps.
+    const bombExplodeAt = 300 + BOMB_THRESHOLD_MS;
+    // Moment où le tout premier opérateur (le plus rapide) engage réellement
+    // sa cible — la riposte ennemie se déclenche après ça, jamais avant.
+    let earliestEngageEnd = Infinity;
+
+    assignedList.forEach(([doorId, op], i) => {
+      const doorEl = document.querySelector('.door[data-door="' + doorId + '"]');
+      const x = Number(doorEl.getAttribute('data-x'));
+      const y = Number(doorEl.getAttribute('data-y'));
+      const marker = makeOperatorMarker(op);
+      svg.appendChild(marker);
+
+      const speed = classData[op.cls].speed;
+      const duration = 2200 - speed * 300;
+      const isCasualty = casualtyIds.has(op.id);
+      const assignedTarget = targets.find(t => t.op.id === op.id);
+      // casualties never reach a target; they fall partway toward whichever
+      // threat their door was nearest to, purely for visual direction
+      const fallbackThreat = threats[doorThreatMap[doorId]];
+      const threatId = assignedTarget ? assignedTarget.targetThreatId : doorThreatMap[doorId];
+      const threat = threats[threatId];
+
+      // Si la bombe ne sera pas désamorcée à temps, l'opérateur le plus
+      // lent ne doit pas visuellement "arriver" après l'explosion — son
+      // trajet est écourté pour s'arrêter net au moment de la détonation.
+      const departureAt = 300 + i * 220;
+      let travelDuration = duration;
+      if (isBombRoom && !bombDefused) {
+        travelDuration = Math.max(150, Math.min(duration, bombExplodeAt - departureAt));
+      }
+
+      // Certaines formes de pièce (ex. le L, le sablier, l'arche) exigent un
+      // détour par un ou plusieurs points de passage pour ne pas couper à
+      // travers un mur ou le vide entre deux sections de la pièce. La
+      // plupart des cas n'ont besoin que d'un seul point (waypoints /
+      // waypointDoors) ; certains trajets (ex. une porte déjà encastrée
+      // dans une aile de l'arche, qui doit rejoindre l'autre aile) ont
+      // besoin de deux points successifs (multiWaypoints), sans quoi même
+      // la ligne vers le premier point couperait le vide.
+      const shapeCfg = ROOM_SHAPES[levelDefs[currentLevel].roomShape] || ROOM_SHAPES.square;
+      let waypointPath = [];
+      if (!isCasualty) {
+        const multi = shapeCfg.multiWaypoints && shapeCfg.multiWaypoints[threatId] && shapeCfg.multiWaypoints[threatId][doorId];
+        if (multi) {
+          waypointPath = multi;
+        } else {
+          const wpDoors = shapeCfg.waypointDoors && shapeCfg.waypointDoors[threatId];
+          if (wpDoors && wpDoors.includes(doorId)) waypointPath = [shapeCfg.waypoints[threatId]];
+        }
+      }
+      const needsWaypoint = waypointPath.length > 0;
+
+      let targetX, targetY;
+      if (isCasualty) {
+        targetX = x + (fallbackThreat.x - x) * 0.35;
+        targetY = y + (fallbackThreat.y - y) * 0.35;
+      } else {
+        // Ranged classes hold back at a standoff distance; Shadow (karambit)
+        // always closes in to melee range.
+        // Defusing a bomb always requires direct contact, regardless of class.
+        const standoff = isBombRoom ? 8 : (op.cls === 'Shadow' ? 6 : (CLASS_STANDOFF[op.cls] || 50));
+        // Le recul se calcule depuis le DERNIER point de passage réel (pas
+        // depuis la porte d'origine) : sur un trajet avec détour, l'angle
+        // d'approche final n'a souvent rien à voir avec la direction
+        // porte->menace en ligne droite — utiliser la porte ici pouvait
+        // pousser le point d'arrêt calculé hors de la pièce (mur/vide),
+        // même quand le trajet affiché contournait correctement l'obstacle.
+        const standoffOrigin = needsWaypoint ? waypointPath[waypointPath.length - 1] : { x, y };
+        const dx = threat.x - standoffOrigin.x, dy = threat.y - standoffOrigin.y;
+        const dist = Math.hypot(dx, dy) || 1;
+        const ux = dx / dist, uy = dy / dist;
+        const perpX = -uy, perpY = ux;
+        const fan = (i % 3 - 1) * 12; // spread multiple operators around the target
+        targetX = threat.x - ux * standoff + perpX * fan;
+        targetY = threat.y - uy * standoff + perpY * fan;
+      }
+
+      // Angle de VISÉE une fois arrivé : pointe vraiment vers la menace,
+      // pas vers le point d'arrêt (qui est décalé en cas d'éventail pour
+      // plusieurs opérateurs) — sinon l'arme semble viser à côté.
+      const aimAngle = Math.atan2(threat.y - targetY, threat.x - targetX) * 180 / Math.PI + 90;
+
+      // Oriente la silhouette dans la direction de son premier déplacement
+      // (vers le premier point de passage s'il y en a un, sinon directement
+      // vers la cible) : le corps/l'arme sont dessinés pointant vers le haut
+      // (nord) à 0°, d'où le +90 pour aligner sur la convention atan2 standard.
+      const firstAimX = needsWaypoint ? waypointPath[0].x : targetX;
+      const firstAimY = needsWaypoint ? waypointPath[0].y : targetY;
+      const angleDeg = Math.atan2(firstAimY - y, firstAimX - x) * 180 / Math.PI + 90;
+      marker.setAttribute('transform', 'translate(' + x + ',' + y + ') rotate(' + angleDeg + ')');
+      const label = marker.querySelector('text');
+      if (label) label.setAttribute('transform', 'rotate(' + (-angleDeg) + ')');
+
+      function fireEffectsAndCasualty() {
+        if (op.cls !== 'Shadow' && !isBombRoom) {
+          const shots = CLASS_SHOT_COUNT[op.cls] || 1;
+          const stagger = op.cls === 'Light' ? 190 : 70;
+          const tipY = parseFloat(marker.dataset.weaponTipY || '-16');
+          for (let s = 0; s < shots; s++) {
+            setTimeout(() => {
+              playClassSound(op.cls);
+              spawnMuzzleFlash(marker, tipY);
+            }, s * stagger);
+          }
+        }
+      }
+
+      setTimeout(() => {
+        if (needsWaypoint) {
+          // Chaîne les segments (1 ou 2 points de passage, puis la cible),
+          // en répartissant la durée totale au prorata de la distance de
+          // chaque segment — généralisation du détour à un seul point pour
+          // supporter aussi les trajets à deux détours (arche).
+          const fullPath = waypointPath.concat([{ x: targetX, y: targetY }]);
+          const segDists = [];
+          let prevPt = { x, y };
+          fullPath.forEach(pt => {
+            segDists.push(Math.hypot(pt.x - prevPt.x, pt.y - prevPt.y));
+            prevPt = pt;
+          });
+          const totalDist = segDists.reduce((a, b) => a + b, 0) || 1;
+          let elapsed = 0;
+          let fromPt = { x, y };
+          fullPath.forEach((pt, idx) => {
+            const isLast = idx === fullPath.length - 1;
+            const dur = Math.max(80, travelDuration * (segDists[idx] / totalDist));
+            // Chaque segment garde sa propre orientation (le 2e détour de
+            // l'arche part à l'horizontale après une montée verticale) ;
+            // seul le dernier segment vise vraiment la menace (aimAngle).
+            const segAngle = isLast ? aimAngle : (Math.atan2(pt.y - fromPt.y, pt.x - fromPt.x) * 180 / Math.PI + 90);
+            setTimeout(() => {
+              if (label) label.setAttribute('transform', 'rotate(' + (-segAngle) + ')');
+              marker.style.transition = 'transform ' + dur + 'ms ease-out';
+              marker.setAttribute('transform', 'translate(' + pt.x + ',' + pt.y + ') rotate(' + segAngle + ')');
+            }, elapsed);
+            elapsed += dur;
+            fromPt = pt;
+          });
+        } else {
+          marker.style.transition = 'transform ' + travelDuration + 'ms ease-out';
+          marker.setAttribute('transform', 'translate(' + targetX + ',' + targetY + ') rotate(' + aimAngle + ')');
+          if (label) label.setAttribute('transform', 'rotate(' + (-aimAngle) + ')');
+        }
+
+        if (isCasualty) {
+          setTimeout(() => {
+            // Fige la position exacte interpolée à cet instant — sans ça,
+            // l'opérateur continuait de glisser vers sa destination pendant
+            // qu'il s'estompait, ce qui n'est pas cohérent avec une mort
+            // instantanée.
+            const frozen = getComputedStyle(marker).transform;
+            marker.style.transition = 'none';
+            if (frozen && frozen !== 'none') marker.style.transform = frozen;
+            marker.querySelector('.op-body').setAttribute('fill', 'var(--danger)');
+            void marker.offsetWidth;
+            marker.style.transition = 'opacity 0.4s ease';
+            marker.style.opacity = '0.15';
+            if (!trapSoundPlayed) {
+              trapSoundPlayed = true;
+              playSfx('explosion');
+              spawnExplosionBurst(marker, 0, 0);
+            }
+          }, travelDuration * 0.35);
+          if (op.cls !== 'Shadow' && !isBombRoom) {
+            setTimeout(fireEffectsAndCasualty, travelDuration * 0.35);
+          }
+        } else if (!(isBombRoom && !bombDefused)) {
+          // Pas de tir sur une bombe désamorcée avec succès ou sans bombe :
+          // seul un échec de désamorçage empêche complètement l'arrivée.
+          setTimeout(fireEffectsAndCasualty, travelDuration);
+          // Deuxième rafale un peu plus tard : donne l'impression d'un vrai
+          // échange soutenu plutôt qu'un tir unique suivi d'un silence —
+          // reste déterministe (le résultat est déjà fixé), seule la mise
+          // en scène s'étire.
+          if (op.cls !== 'Shadow' && !isBombRoom) {
+            setTimeout(fireEffectsAndCasualty, travelDuration + 550);
+          }
+          if (!isBombRoom) earliestEngageEnd = Math.min(earliestEngageEnd, departureAt + travelDuration);
+        }
+      }, departureAt);
+    });
+
+    // Riposte ennemie : un éclat + un son depuis chaque menace encore active,
+    // juste après que le premier opérateur ait réellement engagé sa cible —
+    // jamais avant — pour donner l'impression d'un échange de tirs plutôt
+    // qu'un seul camp qui tire. Le flash part exactement du bout de l'arme
+    // déjà dessinée sur le garde (pas une direction recalculée), pour éviter
+    // qu'il semble tirer dans son propre dos. Purement cosmétique — l'issue
+    // de la pièce reste déterminée par la logique ci-dessus, pas par ceci.
+    if (!isBombRoom && assignedList.length && earliestEngageEnd < Infinity) {
+      setTimeout(() => {
+        [
+          [t1Cleared, threats.T1.x, threats.T1.y - 16, 'class-Assault'],
+          [hasT2 && t2Cleared, threats.T2.x, threats.T2.y - 28, 'class-Heavy'],
+          [hasT3 && t3Cleared, threats.T3.x, threats.T3.y - 16, 'class-Assault'],
+          [hasT4 && t4Cleared, threats.T4.x, threats.T4.y - 16, 'class-Assault'],
+          [hasT5 && t5Cleared, threats.T5.x, threats.T5.y - 16, 'class-Assault'],
+          [hasT6 && t6Cleared, threats.T6.x, threats.T6.y - 16, 'class-Assault'],
+        ].forEach(([active, fx, fy, soundKey], threatIdx) => {
+          if (!active) return;
+          // Chaque garde ouvre le feu avec un léger décalage plutôt que tous
+          // en même temps — sur plusieurs gardes, ça se lit comme un vrai
+          // échange de tirs qui dure, pas un seul flash instantané qu'on
+          // peut manquer en clignant des yeux.
+          const threatDelay = threatIdx * 260;
+          for (let shot = 0; shot < 3; shot++) {
+            setTimeout(() => {
+              spawnEnemyMuzzleFlash(svg, fx, fy);
+              // La nuit, les gardes sont armés du même silencieux que
+              // l'escouade — son étouffé au lieu d'un silence total, pour
+              // rester cohérent avec le tir des opérateurs. Le garde blindé
+              // (T2) utilise le son Heavy (arme plus lourde), les gardes
+              // standards le son Assault.
+              if (isNight) playPreloaded('night', soundKey === 'class-Heavy' ? 0.7 : 0.85, 1.2);
+              else playPreloaded(soundKey, soundKey === 'class-Heavy' ? 0.55 : 0.7, 1.5);
+            }, threatDelay + shot * 90);
+          }
+        });
+      }, earliestEngageEnd + 200);
+    }
+
+    if (isBombRoom) {
+      const timerFill = document.getElementById('bomb-timer-fill');
+      setTimeout(() => {
+        timerFill.style.transition = 'width ' + BOMB_THRESHOLD_MS + 'ms linear';
+        timerFill.setAttribute('width', '0');
+      }, 300);
+    }
+
+    // La riposte ennemie est étalée dans le temps (un garde après l'autre,
+    // 3 tirs chacun) et les opérateurs ont maintenant une seconde rafale —
+    // la fin de mission doit attendre que tout ça ait eu le temps de se jouer.
+    const retaliatingCount = [t1Cleared, hasT2 && t2Cleared, hasT3 && t3Cleared, hasT4 && t4Cleared, hasT5 && t5Cleared, hasT6 && t6Cleared].filter(Boolean).length;
+    const retaliationSpan = retaliatingCount > 0 ? (retaliatingCount - 1) * 260 + 2 * 90 + 220 : 0;
+    const maxDelay = (isBombRoom && !bombDefused)
+      ? bombExplodeAt + 900
+      : Math.max(
+          300 + assignedList.length * 220 + slowestDuration + 1700,
+          (earliestEngageEnd < Infinity ? earliestEngageEnd : 0) + 200 + retaliationSpan + 600
+        );
+
+    if (isBombRoom) {
+      const revealAt = bombDefused ? (maxDelay - 500) : bombExplodeAt;
+      setTimeout(() => {
+        const timerFill = document.getElementById('bomb-timer-fill');
+        timerFill.style.transition = 'opacity 0.3s ease';
+        timerFill.setAttribute('fill', bombDefused ? 'var(--ok)' : 'var(--danger)');
+        document.getElementById('bomb-g').style.opacity = bombDefused ? '0.4' : '1';
+        if (!bombDefused) {
+          playSfx('explosion');
+          const bombShapeCfg = ROOM_SHAPES[levelDefs[currentLevel].roomShape] || ROOM_SHAPES.square;
+          spawnExplosionBurst(svg, bombShapeCfg.bomb.x, bombShapeCfg.bomb.y);
+        }
+      }, revealAt);
+    } else {
+      setTimeout(() => {
+        if (t1Cleared) document.getElementById('t1-g').style.opacity = '0.15';
+        if (t3Cleared && hasT3) document.getElementById('t3-g').style.opacity = '0.15';
+        if (t4Cleared && hasT4) document.getElementById('t4-g').style.opacity = '0.15';
+        if (t5Cleared && hasT5) document.getElementById('t5-g').style.opacity = '0.15';
+        if (t6Cleared && hasT6) document.getElementById('t6-g').style.opacity = '0.15';
+        if (t2Cleared) {
+          document.getElementById('t2-g').style.transition = 'opacity 0.3s ease';
+          document.getElementById('t2-g').style.opacity = hostageSafe ? '0.15' : '0.5';
+          if (!hostageSafe) document.getElementById('t2-g').querySelector('.hostage-mark').setAttribute('fill', 'var(--danger)');
+        }
+      }, maxDelay - 500);
+    }
+
+    setTimeout(() => {
+      showResult({ primarySuccess, noOperatorLost, hostageSafe, hostageFailReason, stealthSuccess, t1Cleared, t2Cleared, hasT2, t3Cleared, hasT3, t4Cleared, hasT4, t5Cleared, hasT5, t6Cleared, hasT6, casualtyIds, isBombRoom, bombDefused, bombFastDefuse });
+    }, maxDelay);
+  }
+
+  function showResult(r) {
+    const overlay = document.getElementById('overlay');
+    const title = document.getElementById('result-title');
+    const scoreEl = document.getElementById('result-score');
+    const bestNote = document.getElementById('best-score-note');
+    const list = document.getElementById('obj-list');
+    const replayBtn = document.getElementById('replay-btn');
+    const nextBtn = document.getElementById('next-room-btn');
+    const nextLevelBtn = document.getElementById('next-level-btn');
+    const menuBtn = document.getElementById('menu-return-btn');
+    list.innerHTML = '';
+    bestNote.textContent = '';
+    nextBtn.style.display = 'none';
+    nextLevelBtn.style.display = 'none';
+    replayBtn.style.display = '';
+    replayBtn.textContent = t('replayRoom');
+    replayBtn.onclick = null;
+
+    if (!r.primarySuccess) {
+      title.textContent = r.isBombRoom ? t('bombExplodedTitle') : t('missionFailedTitle');
+      scoreEl.textContent = '0 ' + t('ptsUnit');
+      const missed = [];
+      if (r.isBombRoom) {
+        missed.push(!r.t1Cleared
+          ? t('bombNotSentMsg')
+          : t('bombTooSlowMsg'));
+      } else {
+        if (!r.t1Cleared) missed.push(t('guardT1Msg'));
+        if (r.hasT2 && !r.t2Cleared) missed.push(t('armoredGuardMsg'));
+        if (r.hasT3 && !r.t3Cleared) missed.push(t('secondGuardMsg'));
+        if (r.hasT4 && !r.t4Cleared) missed.push(t('guardOtherMsg'));
+        if (r.hasT5 && !r.t5Cleared) missed.push(t('guardOtherMsg'));
+        if (r.hasT6 && !r.t6Cleared) missed.push(t('guardOtherMsg'));
+      }
+      missed.forEach(m => {
+        const li = document.createElement('li');
+        li.className = 'no';
+        li.innerHTML = '<span class="mark">✗</span><span>' + m + '</span>';
+        list.appendChild(li);
+      });
+      overlay.classList.add('show');
+      return;
+    }
+
+    // Room cleared: casualties from this room become permanently unavailable
+    // for the rest of this level attempt.
+    r.casualtyIds.forEach(id => levelCasualties.add(id));
+
+    let secondaries;
+    if (r.isBombRoom) {
+      secondaries = [
+        { label: t('noOperatorLostLabel'), ok: r.noOperatorLost },
+        { label: t('noShotsFiredLabel'), ok: r.stealthSuccess },
+        { label: t('bombFastDefuseLabel'), ok: r.bombFastDefuse },
+      ];
+    } else if (r.hasT2) {
+      const hostageLabel = r.hostageSafe
+        ? t('hostageSafeLabel')
+        : t('hostageInjuredLabel');
+      secondaries = [
+        { label: t('noOperatorLostLabel'), ok: r.noOperatorLost },
+        { label: hostageLabel, ok: r.hostageSafe },
+        { label: t('noShotsFiredLabel'), ok: r.stealthSuccess },
+      ];
+    } else {
+      // Pas de garde blindé/otage dans cette pièce : seuls 2 bonus
+      // s'appliquent réellement. On ne prétend pas qu'un otage a été
+      // "libéré sans blessure" quand il n'y en avait aucun ici.
+      secondaries = [
+        { label: t('noOperatorLostLabel'), ok: r.noOperatorLost },
+        { label: t('noShotsFiredLabel'), ok: r.stealthSuccess },
+      ];
+    }
+    const achieved = secondaries.filter(s => s.ok).length;
+    // Barème à 4 paliers (0 à 3 bonus) pour les pièces à 3 bonus possibles ;
+    // barème à 3 paliers (0 à 2 bonus) pour les pièces sans otage, réparti
+    // également pour que 10 000 reste atteignable partout.
+    const scoreTable = secondaries.length === 3 ? [1000, 2500, 5000, 10000] : [1000, 5500, 10000];
+    const roomScore = scoreTable[achieved];
+    roomScores[currentRoomIndex] = roomScore;
+
+    const def = levelDefs[currentLevel];
+    const isLastRoom = currentRoomIndex === def.rooms.length - 1;
+
+    secondaries.forEach(s => {
+      const li = document.createElement('li');
+      li.className = s.ok ? 'ok' : 'no';
+      li.innerHTML = '<span class="mark">' + (s.ok ? '✓' : '✗') + '</span><span>' + s.label + '</span>';
+      list.appendChild(li);
+    });
+
+    if (!isLastRoom) {
+      title.textContent = t('roomSecured');
+      scoreEl.textContent = roomScore.toLocaleString('fr-CA') + ' ' + t('ptsUnit');
+      nextBtn.style.display = '';
+      nextBtn.onclick = () => enterRoom(currentRoomIndex + 1);
+    } else {
+      const total = roomScores.reduce((a, b) => a + (b || 0), 0);
+      title.textContent = def.rooms.length > 1 ? t('levelCompletedTitle') : t('missionSuccessTitle');
+      scoreEl.textContent = total.toLocaleString('fr-CA') + ' ' + t('ptsUnit');
+      if (total > bestScores[currentLevel]) {
+        bestScores[currentLevel] = total;
+        saveJSONPref('deadsector-best-scores', bestScores);
+        bestNote.textContent = t('newBestScoreLabel');
+      }
+      checkLevelMilestone();
+      replayBtn.textContent = t('replayLevel');
+      replayBtn.onclick = () => enterMission(currentLevel);
+      if (levelDefs[currentLevel + 1]) {
+        nextLevelBtn.style.display = '';
+        nextLevelBtn.onclick = () => showBriefing(currentLevel + 1);
+      }
+    }
+
+    overlay.classList.add('show');
+  }
+
+  document.getElementById('replay-btn').addEventListener('click', () => {
+    for (const k in assignments) delete assignments[k];
+    selectedOp = null;
+    resolved = false;
+    document.getElementById('overlay').classList.remove('show');
+    resetRoomVisuals();
+    hint.textContent = t('selectOperatorHint');
+    renderAll();
+  });
+
+  // --- Accessibilité ---
+  // Écrit aussi vers DeviceStorage sur Telegram (asynchrone, sans bloquer) —
+  // localStorage reste la source de vérité immédiate dans tous les cas.
+  function mirrorToTelegramStorage(key, rawValue) {
+    if (isTelegram && window.Telegram.WebApp.DeviceStorage) {
+      try { window.Telegram.WebApp.DeviceStorage.set(key, rawValue).catch(() => {}); } catch (e) {}
+    }
+  }
+  function loadBoolPref(key) {
+    try { return localStorage.getItem(key) === '1'; } catch (e) { return false; }
+  }
+  function saveBoolPref(key, value) {
+    const raw = value ? '1' : '0';
+    try { localStorage.setItem(key, raw); } catch (e) {}
+    mirrorToTelegramStorage(key, raw);
+  }
+  function loadIntPref(key, fallback) {
+    try {
+      const v = parseInt(localStorage.getItem(key), 10);
+      return Number.isFinite(v) ? v : fallback;
+    } catch (e) { return fallback; }
+  }
+  function saveIntPref(key, value) {
+    const raw = String(value);
+    try { localStorage.setItem(key, raw); } catch (e) {}
+    mirrorToTelegramStorage(key, raw);
+  }
+  function loadJSONPref(key, fallback) {
+    try {
+      const v = JSON.parse(localStorage.getItem(key));
+      return v && typeof v === 'object' ? v : fallback;
+    } catch (e) { return fallback; }
+  }
+  function saveJSONPref(key, value) {
+    const raw = JSON.stringify(value);
+    try { localStorage.setItem(key, raw); } catch (e) {}
+    mirrorToTelegramStorage(key, raw);
+  }
+  function loadStringPref(key, fallback) {
+    try { const v = localStorage.getItem(key); return v || fallback; } catch (e) { return fallback; }
+  }
+  function saveStringPref(key, value) {
+    try { localStorage.setItem(key, value); } catch (e) {}
+    mirrorToTelegramStorage(key, value);
+  }
+  let colorblindMode = loadBoolPref('deadsector-colorblind');
+  let largeTextMode = loadBoolPref('deadsector-large-text');
+
+  function applyAccessibility() {
+    document.body.classList.toggle('colorblind', colorblindMode);
+    document.documentElement.classList.toggle('large-text', largeTextMode);
+    document.getElementById('colorblind-btn').classList.toggle('active', colorblindMode);
+    document.getElementById('large-text-btn').classList.toggle('active', largeTextMode);
+  }
+
+  document.getElementById('colorblind-btn').addEventListener('click', () => {
+    colorblindMode = !colorblindMode;
+    saveBoolPref('deadsector-colorblind', colorblindMode);
+    applyAccessibility();
+  });
+  document.getElementById('large-text-btn').addEventListener('click', () => {
+    largeTextMode = !largeTextMode;
+    saveBoolPref('deadsector-large-text', largeTextMode);
+    applyAccessibility();
+  });
+  applyAccessibility();
+
+  document.querySelectorAll('.lang-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      setLanguage(btn.getAttribute('data-lang'));
+      renderLevelList();
+    });
+  });
+  setLanguage(currentLang);
+
+  initDoors();
+  applyLevelVisibility();
+  renderAll();
+  renderLevelList();
+  renderSkinTrack();
+  renderKnifeProgress();
+  showScreen('menu');
+}
+
+// --- Démarrage : Telegram Mini App ou normal (Google Play/navigateur) ---
+// Sur Telegram, on précharge d'abord les données sauvegardées depuis
+// DeviceStorage (persistant, propre à Telegram) vers localStorage, pour que
+// tout le reste du jeu — qui lit ses préférences de façon synchrone au
+// démarrage — les trouve déjà en place. Hors Telegram, rien ne change :
+// bootGame() démarre immédiatement, exactement comme avant.
+const isTelegram = !!(window.Telegram && window.Telegram.WebApp);
+const PERSIST_KEYS = ['deadsector-ads-watched', 'deadsector-best-scores', 'deadsector-colorblind', 'deadsector-lang', 'deadsector-large-text', 'deadsector-milestone-tier', 'deadsector-squad-composition'];
+
+function preloadTelegramStorage(done) {
+  if (!isTelegram || !window.Telegram.WebApp.DeviceStorage) { done(); return; }
+  try { window.Telegram.WebApp.ready(); window.Telegram.WebApp.expand(); } catch (e) {}
+  const ds = window.Telegram.WebApp.DeviceStorage;
+  let finished = false;
+  const finishOnce = () => { if (finished) return; finished = true; done(); };
+  // Filet de sécurité : si DeviceStorage ne répond jamais (cas d'un navigateur
+  // mobile normal où le script Telegram se charge mais où l'API ne fonctionne
+  // pas réellement hors de l'app Telegram), le jeu démarre quand même après 2s
+  // au lieu de rester bloqué indéfiniment sur un écran vide.
+  const safetyTimer = setTimeout(finishOnce, 2000);
+  let remaining = PERSIST_KEYS.length;
+  const finishOne = () => { if (--remaining <= 0) { clearTimeout(safetyTimer); finishOnce(); } };
+  PERSIST_KEYS.forEach(key => {
+    try {
+      ds.get(key)
+        .then(value => { if (value !== undefined && value !== null) { try { localStorage.setItem(key, value); } catch (e) {} } finishOne(); })
+        .catch(() => finishOne());
+    } catch (e) { finishOne(); }
+  });
+}
+
+preloadTelegramStorage(bootGame);
+</script>
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('service-worker.js').catch(() => {});
+    });
+  }
+</script>
+</body>
+</html>
