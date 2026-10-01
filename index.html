@@ -1928,6 +1928,10 @@ function bootGame() {
     // de survivants bricole des pièges, il ne pose pas de charges
     // explosives sur ses propres portes.
     trap: './sound-trap.mp3',
+    // Riposte des infectés pendant l'assaut — remplace le tir d'arme à feu
+    // hérité de Tactical Squad (incohérent : un infecté n'a pas de fusil).
+    // Grognement/attaque, pas une arme.
+    infectedAttack: './sound-infected-attack.mp3',
   };
   // Musique d'ambiance de fond (menus / briefing), ajoutée le 27 sept. 2026
   // à la demande du joueur ("le jeu est très silencieux"). Deux tentatives
@@ -1967,6 +1971,7 @@ function bootGame() {
     ['sfx-unlock', SFX.unlock],
     ['sfx-click', SFX.click],
     ['sfx-trap', SFX.trap],
+    ['sfx-infected-attack', SFX.infectedAttack],
     ['class-Assault', CLASS_SOUND_SRC.Assault],
     ['class-Heavy', CLASS_SOUND_SRC.Heavy],
     ['class-Light', CLASS_SOUND_SRC.Light],
@@ -2136,47 +2141,41 @@ function bootGame() {
     setTimeout(() => g.remove(), 90);
   }
 
-  // Même éclat, mais positionné en coordonnées absolues de la pièce plutôt
-  // que relatif à un opérateur — utilisé pour la riposte ennemie.
+  // Riposte d'un infecté pendant l'assaut, en coordonnées absolues de la
+  // pièce — pas relative à un opérateur.
   //
-  // Agrandi et allongé le 27 sept. 2026 : le joueur a signalé ne jamais
-  // percevoir de riposte ennemie ("des exécutions sommaires"). La mécanique
-  // existait déjà et se déclenchait bien (voir plus bas, après
-  // earliestEngageEnd), mais l'éclat d'origine (halo r=9, 220ms) passait
-  // quasi inaperçu, surtout sur les pièces à un seul garde faible qui se
-  // résolvent en 1-2 secondes. On allonge l'éclat (220ms → 420ms) et on
-  // ajoute un anneau rouge pulsé directement sur le garde qui tire, pour que
-  // la riposte soit indiscutablement visible même en visionnage rapide.
-  //
-  // Retour du joueur le 27 sept. 2026, une fois le vrai bug de déclenchement
-  // corrigé (voir plus bas) et la riposte enfin visible en jeu : l'éclat
-  // agrandi (halo r=13) était trop imposant comparé à l'éclat des opérateurs
-  // (halo r=5) — remis au même gabarit que spawnMuzzleFlash ci-dessus, tout
-  // en gardant la durée allongée et la pulsation rouge sur le garde, qui
-  // suffisent à elles seules à rendre la riposte lisible.
+  // À l'origine un éclat de tir (halo orange + étoile jaune, calqué sur
+  // spawnMuzzleFlash ci-dessus) hérité tel quel de Tactical Squad. Le joueur
+  // a fait remarquer le 1er oct. 2026 que ça n'a aucun sens : un infecté n'a
+  // pas d'arme à feu, donc ni flash de tir ni son de coup de feu ne devraient
+  // accompagner son attaque. Remplacé par une marque de griffure (traits
+  // rouge sombre, pas de lueur orange/jaune assimilable à une arme) — la
+  // pulsation rouge sur le corps, elle, reste pertinente (lisibilité de la
+  // riposte) et n'a pas changé. Le son associé est maintenant un grognement
+  // (SFX.infectedAttack), pas un tir — voir le point d'appel plus bas.
   function spawnEnemyMuzzleFlash(svg, x, y, threatId) {
     const ns = 'http://www.w3.org/2000/svg';
     const g = document.createElementNS(ns, 'g');
     g.setAttribute('transform', 'translate(' + x + ',' + y + ')');
     g.style.pointerEvents = 'none';
-    const halo = document.createElementNS(ns, 'circle');
-    halo.setAttribute('r', '5'); halo.setAttribute('fill', '#ff8c1a'); halo.setAttribute('opacity', '0.55');
-    const star = document.createElementNS(ns, 'polygon');
-    const pts = [];
-    for (let k = 0; k < 8; k++) {
-      const ang = k * Math.PI / 4;
-      const rad = k % 2 === 0 ? 4.2 : 1.7;
-      pts.push((Math.cos(ang) * rad).toFixed(2) + ',' + (Math.sin(ang) * rad).toFixed(2));
+    // Trois griffures courtes en éventail plutôt qu'un éclat lumineux.
+    for (let k = 0; k < 3; k++) {
+      const ang = (-0.5 + k * 0.5) + Math.PI / 2; // éventail vertical, ~57°
+      const x1 = Math.cos(ang) * 2, y1 = Math.sin(ang) * 2;
+      const x2 = Math.cos(ang) * 9, y2 = Math.sin(ang) * 9;
+      const line = document.createElementNS(ns, 'line');
+      line.setAttribute('x1', x1.toFixed(2)); line.setAttribute('y1', y1.toFixed(2));
+      line.setAttribute('x2', x2.toFixed(2)); line.setAttribute('y2', y2.toFixed(2));
+      line.setAttribute('stroke', '#8a0f14'); line.setAttribute('stroke-width', '1.6');
+      line.setAttribute('stroke-linecap', 'round'); line.setAttribute('opacity', '0.8');
+      g.appendChild(line);
     }
-    star.setAttribute('points', pts.join(' '));
-    star.setAttribute('fill', '#ffe066');
-    g.appendChild(halo); g.appendChild(star);
     svg.appendChild(g);
     setTimeout(() => g.remove(), 420);
 
-    // Pulsation rouge sur le corps du garde qui tire, synchronisée avec
-    // l'éclat — rend la riposte lisible même si l'éclat lui-même (positionné
-    // au bout de l'arme, plus haut) sort du champ visuel du joueur.
+    // Pulsation rouge sur le corps de l'infecté qui attaque, synchronisée
+    // avec la griffure — rend la riposte lisible même si la griffure
+    // elle-même (positionnée plus haut) sort du champ visuel du joueur.
     if (threatId) {
       const bodyEl = document.getElementById(threatId.toLowerCase() + '-g');
       const body = bodyEl && bodyEl.querySelector('.enemy-body');
@@ -5594,41 +5593,38 @@ const LEVEL_I18N = {"en": {"1": {"name": "Level 1 · Suburb", "sub": "Easy · 5 
       }, departureAt);
     });
 
-    // Riposte ennemie : un éclat + un son depuis chaque menace encore active,
-    // juste après que le premier opérateur ait réellement engagé sa cible —
-    // jamais avant — pour donner l'impression d'un échange de tirs plutôt
-    // qu'un seul camp qui tire. Le flash part exactement du bout de l'arme
-    // déjà dessinée sur le garde (pas une direction recalculée), pour éviter
-    // qu'il semble tirer dans son propre dos. Purement cosmétique — l'issue
-    // de la pièce reste déterminée par la logique ci-dessus, pas par ceci.
+    // Riposte des infectés : une griffure + un grognement depuis chaque
+    // menace encore active, juste après que le premier opérateur ait
+    // réellement engagé sa cible — jamais avant — pour donner l'impression
+    // d'un affrontement qui dure plutôt qu'un seul camp qui agit. Purement
+    // cosmétique — l'issue de la pièce reste déterminée par la logique
+    // ci-dessus, pas par ceci.
+    //
+    // Jusqu'au 1er oct. 2026, chaque infecté "tirait" 3 coups avec le son
+    // d'arme de l'opérateur (hérité tel quel de Tactical Squad) — incohérent
+    // pour un infecté sans arme à feu. Remplacé par une seule attaque
+    // (griffure + grognement, SFX.infectedAttack) par infecté au lieu d'une
+    // rafale de 3 tirs ; voir retaliationSpan plus bas, ajusté en conséquence.
     if (!isBombRoom && assignedList.length && earliestEngageEnd < Infinity) {
       setTimeout(() => {
         [
-          [t1Cleared, threats.T1.x, threats.T1.y - 16, 'class-Assault', 'T1'],
-          [hasT2 && t2Cleared, threats.T2.x, threats.T2.y - 28, 'class-Heavy', 'T2'],
-          [hasT3 && t3Cleared, threats.T3.x, threats.T3.y - 16, 'class-Assault', 'T3'],
-          [hasT4 && t4Cleared, threats.T4.x, threats.T4.y - 16, 'class-Assault', 'T4'],
-          [hasT5 && t5Cleared, threats.T5.x, threats.T5.y - 16, 'class-Assault', 'T5'],
-          [hasT6 && t6Cleared, threats.T6.x, threats.T6.y - 16, 'class-Assault', 'T6'],
-        ].forEach(([active, fx, fy, soundKey, threatId], threatIdx) => {
+          [t1Cleared, threats.T1.x, threats.T1.y - 16, 'T1'],
+          [hasT2 && t2Cleared, threats.T2.x, threats.T2.y - 28, 'T2'],
+          [hasT3 && t3Cleared, threats.T3.x, threats.T3.y - 16, 'T3'],
+          [hasT4 && t4Cleared, threats.T4.x, threats.T4.y - 16, 'T4'],
+          [hasT5 && t5Cleared, threats.T5.x, threats.T5.y - 16, 'T5'],
+          [hasT6 && t6Cleared, threats.T6.x, threats.T6.y - 16, 'T6'],
+        ].forEach(([active, fx, fy, threatId], threatIdx) => {
           if (!active) return;
-          // Chaque garde ouvre le feu avec un léger décalage plutôt que tous
-          // en même temps — sur plusieurs gardes, ça se lit comme un vrai
-          // échange de tirs qui dure, pas un seul flash instantané qu'on
+          // Chaque infecté attaque avec un léger décalage plutôt que tous en
+          // même temps — sur plusieurs infectés, ça se lit comme un vrai
+          // affrontement qui dure, pas une seule attaque instantanée qu'on
           // peut manquer en clignant des yeux.
           const threatDelay = threatIdx * 260;
-          for (let shot = 0; shot < 3; shot++) {
-            setTimeout(() => {
-              spawnEnemyMuzzleFlash(svg, fx, fy, threatId);
-              // La nuit, les gardes sont armés du même silencieux que
-              // l'escouade — son étouffé au lieu d'un silence total, pour
-              // rester cohérent avec le tir des opérateurs. Le garde blindé
-              // (T2) utilise le son Heavy (arme plus lourde), les gardes
-              // standards le son Assault.
-              if (isNight) playPreloaded('night', soundKey === 'class-Heavy' ? 0.7 : 0.85, 1.2);
-              else playPreloaded(soundKey, soundKey === 'class-Heavy' ? 0.55 : 0.7, 1.5);
-            }, threatDelay + shot * 90);
-          }
+          setTimeout(() => {
+            spawnEnemyMuzzleFlash(svg, fx, fy, threatId);
+            playPreloaded('sfx-infected-attack', 1.0, 0.9);
+          }, threatDelay);
         });
       }, earliestEngageEnd + 200);
     }
@@ -5657,7 +5653,9 @@ const LEVEL_I18N = {"en": {"1": {"name": "Level 1 · Suburb", "sub": "Easy · 5 
     // 3 tirs chacun) et les opérateurs ont maintenant une seconde rafale —
     // la fin de mission doit attendre que tout ça ait eu le temps de se jouer.
     const retaliatingCount = [t1Cleared, hasT2 && t2Cleared, hasT3 && t3Cleared, hasT4 && t4Cleared, hasT5 && t5Cleared, hasT6 && t6Cleared].filter(Boolean).length;
-    const retaliationSpan = retaliatingCount > 0 ? (retaliatingCount - 1) * 260 + 2 * 90 + 420 : 0;
+    // Un seul temps d'attaque par infecté désormais (plus de rafale de 3
+    // tirs) : plus de terme "2 * 90" pour les tirs intermédiaires.
+    const retaliationSpan = retaliatingCount > 0 ? (retaliatingCount - 1) * 260 + 420 : 0;
     const maxDelay = (isBombRoom && !bombDefused)
       ? bombExplodeAt + 900
       : Math.max(

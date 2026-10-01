@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'v2';
+const CACHE_VERSION = 'v3';
 const CACHE_NAME = 'deadsector-' + CACHE_VERSION;
 const ASSETS = [
   './',
@@ -18,6 +18,7 @@ const ASSETS = [
   './sound-shadow-blade.mp3',
   './sound-unlock.mp3',
   './sound-trap.mp3',
+  './sound-infected-attack.mp3',
   './music-menu.mp3',
   './brief-banlieue.jpg',
   './brief-ferme.jpg',
