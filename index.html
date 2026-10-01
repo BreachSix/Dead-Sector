@@ -241,12 +241,16 @@
   }
   .briefing-faction-logo {
     position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-    width: 85%; height: auto; opacity: 0.42; filter: grayscale(1);
+    width: 100%; height: auto; opacity: 0.42; filter: grayscale(1);
     -webkit-mask-image: radial-gradient(ellipse 65% 65% at center, black 55%, transparent 90%);
     mask-image: radial-gradient(ellipse 65% 65% at center, black 55%, transparent 90%);
     pointer-events: none;
   }
-  .briefing-enemy-wrap img#briefing-enemy-img { max-width: 100%; max-height: 32vh; object-fit: contain; display: block; position: relative; z-index: 1; }
+  /* Les photos d'infectés de Dead Sector cadrent le personnage plus large que
+     celles de Tactical Squad (peu de marge autour) : sans cette limite de
+     largeur, l'infecté couvre tout le cadre et cache complètement le logo de
+     faction en filigrane derrière lui. */
+  .briefing-enemy-wrap img#briefing-enemy-img { max-width: 70%; max-height: 32vh; object-fit: contain; display: block; position: relative; z-index: 1; }
   .briefing-operator-vignette {
     position: absolute; right: 6px; bottom: 0; height: 100%; width: auto;
     object-fit: contain; object-position: bottom right;
