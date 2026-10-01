@@ -17,6 +17,7 @@ const ASSETS = [
   './sound-night-vision.mp3',
   './sound-shadow-blade.mp3',
   './sound-unlock.mp3',
+  './sound-trap.mp3',
   './music-menu.mp3',
   './brief-banlieue.jpg',
   './brief-ferme.jpg',

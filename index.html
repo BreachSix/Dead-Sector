@@ -1919,6 +1919,11 @@ function bootGame() {
     shadowBlade: './sound-shadow-blade.mp3',
     unlock: './sound-unlock.mp3',
     click: './sound-click.mp3',
+    // Porte piégée artisanale (planche à clous) — distinct du vrai
+    // désamorçage de bombe (sound-bomb-tick/explosion) : un monde zombie
+    // de survivants bricole des pièges, il ne pose pas de charges
+    // explosives sur ses propres portes.
+    trap: './sound-trap.mp3',
   };
   // Musique d'ambiance de fond (menus / briefing), ajoutée le 27 sept. 2026
   // à la demande du joueur ("le jeu est très silencieux"). Deux tentatives
@@ -1957,6 +1962,7 @@ function bootGame() {
     ['sfx-shadowblade', SFX.shadowBlade],
     ['sfx-unlock', SFX.unlock],
     ['sfx-click', SFX.click],
+    ['sfx-trap', SFX.trap],
     ['class-Assault', CLASS_SOUND_SRC.Assault],
     ['class-Heavy', CLASS_SOUND_SRC.Heavy],
     ['class-Light', CLASS_SOUND_SRC.Light],
@@ -2042,8 +2048,9 @@ function bootGame() {
     playPreloaded('sfx-' + key);
   }
 
-  // Éclat visuel orange-jaune, utilisé à la fois pour l'explosion de la
-  // bombe et pour le déclenchement d'une porte piégée.
+  // Éclat visuel orange-jaune, réservé au vrai désamorçage de bombe raté
+  // (mission de type "bomb"). La porte piégée utilise spawnTrapBurst, plus
+  // bas, qui n'a rien à voir avec un explosif.
   function spawnExplosionBurst(parent, cx, cy) {
     const ns = 'http://www.w3.org/2000/svg';
     const g = document.createElementNS(ns, 'g');
@@ -2064,6 +2071,42 @@ function bootGame() {
       });
     });
     setTimeout(() => g.remove(), 420);
+  }
+
+  // Piège artisanal (planche à clous) — flaque de sang irrégulière plutôt
+  // qu'une boule de feu : pas d'explosif, juste des clous rouillés plantés
+  // au sol que la victime traverse en poussant/franchissant la porte.
+  function spawnTrapBurst(parent, cx, cy) {
+    const ns = 'http://www.w3.org/2000/svg';
+    const g = document.createElementNS(ns, 'g');
+    g.setAttribute('transform', 'translate(' + cx + ',' + cy + ') scale(0.3)');
+    g.style.opacity = '1';
+    g.style.transition = 'transform 420ms ease-out, opacity 500ms ease-out';
+    g.style.pointerEvents = 'none';
+    // Flaque principale, forme irrégulière (pas un cercle parfait) pour
+    // évoquer une tache de sang plutôt qu'un halo lumineux.
+    const pool = document.createElementNS(ns, 'path');
+    pool.setAttribute('d', 'M0,-9 C5,-8 9,-4 8,1 C10,5 6,10 1,9 C-4,11 -9,6 -8,1 C-10,-4 -5,-9 0,-9 Z');
+    pool.setAttribute('fill', '#7a0c10'); pool.setAttribute('opacity', '0.75');
+    // Quelques éclaboussures autour, dispersées de façon asymétrique.
+    const splats = [[7, -6, 2.1], [-6, 6, 1.6], [4, 8, 1.3], [-8, -3, 1.4]];
+    g.appendChild(pool);
+    splats.forEach(([sx, sy, sr]) => {
+      const s = document.createElementNS(ns, 'circle');
+      s.setAttribute('cx', sx); s.setAttribute('cy', sy); s.setAttribute('r', sr);
+      s.setAttribute('fill', '#5c0a0d'); s.setAttribute('opacity', '0.65');
+      g.appendChild(s);
+    });
+    parent.appendChild(g);
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        g.setAttribute('transform', 'translate(' + cx + ',' + cy + ') scale(1.6)');
+        g.style.opacity = '0.85';
+      });
+    });
+    // La flaque s'estompe plus lentement qu'une explosion — reste visible
+    // un instant pour que l'impact du piège se lise clairement.
+    setTimeout(() => g.remove(), 900);
   }
 
   // Éclat de tir en forme d'étoile (plus reconnaissable qu'un simple point),
@@ -5522,8 +5565,8 @@ const LEVEL_I18N = {"en": {"1": {"name": "Level 1 · Suburb", "sub": "Easy · 5 
             marker.style.opacity = '0.15';
             if (!trapSoundPlayed) {
               trapSoundPlayed = true;
-              playSfx('explosion');
-              spawnExplosionBurst(marker, 0, 0);
+              playSfx('trap');
+              spawnTrapBurst(marker, 0, 0);
             }
           }, travelDuration * 0.35);
           if (op.cls !== 'Shadow' && !isBombRoom) {
