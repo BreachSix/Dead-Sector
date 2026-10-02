@@ -9,8 +9,8 @@
      de suivi non essentielles. -->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>BreachSix</title>
-<meta name="description" content="Jeu tactique de nettoyage de pièces — planifie l'assaut, dirige tes escouades.">
+<title>Breach Six: Dead Sector</title>
+<meta name="description" content="Jeu tactique de survie en milieu contaminé — planifie l'assaut, dirige tes escouades contre les infectés.">
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
@@ -649,11 +649,11 @@
       <span class="legend-item"><span class="legend-swatch legend-op"></span><span data-i18n="operatorLegend">Opérateur</span></span>
       <span class="legend-item">
         <svg class="legend-icon" viewBox="-7 -7 14 14" width="11" height="11" aria-hidden="true"><circle cx="0" cy="0" r="6" fill="var(--enemy)" stroke="var(--enemy-dark)" stroke-width="1"/></svg>
-        <span data-i18n="enemyGuardLegend">Garde ennemi</span>
+        <span data-i18n="enemyGuardLegend">Infecté</span>
       </span>
       <span class="legend-item">
         <svg class="legend-icon" viewBox="-9 -12 18 24" width="11" height="14" aria-hidden="true"><polygon points="0,-12 9,-7 9,5 0,12 -9,5 -9,-7" fill="var(--enemy)" stroke="var(--enemy-dark)" stroke-width="1.5"/></svg>
-        <span data-i18n="armoredGuardLegend">Garde blindé</span>
+        <span data-i18n="armoredGuardLegend">Infecté blindé</span>
       </span>
       <span class="legend-item">
         <svg class="legend-icon" viewBox="-7 -7 14 14" width="11" height="11" aria-hidden="true"><circle cx="0" cy="0" r="6" fill="var(--enemy)" stroke="var(--enemy-dark)" stroke-width="1"/><circle cx="0" cy="0" r="5.2" fill="none" stroke="var(--danger)" stroke-width="1.3"/></svg>
@@ -750,9 +750,9 @@ function bootGame() {
       objectiveLabel: 'Objectif :',
       operatorLegend: 'Opérateur',
       hostageLegend: 'Survivant',
-      bombLegend: 'Incubateur',
-      enemyGuardLegend: 'Garde ennemi',
-      armoredGuardLegend: 'Garde blindé',
+      bombLegend: 'Bombe',
+      enemyGuardLegend: 'Infecté',
+      armoredGuardLegend: 'Infecté blindé',
       sniperLegend: "Éclaireur infecté (Shadow exposé)",
       selectOperatorHint: 'Sélectionne un opérateur pour commencer.',
       squadA: 'Escouade A',
@@ -860,9 +860,9 @@ function bootGame() {
       objectiveLabel: 'Objective:',
       operatorLegend: 'Operator',
       hostageLegend: 'Survivor',
-      bombLegend: 'Incubator',
-      enemyGuardLegend: 'Enemy guard',
-      armoredGuardLegend: 'Armored guard',
+      bombLegend: 'Bomb',
+      enemyGuardLegend: 'Infected',
+      armoredGuardLegend: 'Armored infected',
       sniperLegend: 'Infected Scout (Shadow exposed)',
       selectOperatorHint: 'Select an operator to begin.',
       squadA: 'Squad A',
@@ -970,9 +970,9 @@ function bootGame() {
       objectiveLabel: 'Objetivo:',
       operatorLegend: 'Operador',
       hostageLegend: 'Superviviente',
-      bombLegend: 'Incubadora',
-      enemyGuardLegend: 'Guardia enemigo',
-      armoredGuardLegend: 'Guardia blindado',
+      bombLegend: 'Bomba',
+      enemyGuardLegend: 'Infectado',
+      armoredGuardLegend: 'Infectado blindado',
       sniperLegend: 'Infectado explorador (Shadow expuesto)',
       selectOperatorHint: 'Selecciona un operador para empezar.',
       squadA: 'Escuadrón A',
@@ -1080,9 +1080,9 @@ function bootGame() {
       objectiveLabel: 'Objetivo:',
       operatorLegend: 'Operador',
       hostageLegend: 'Sobrevivente',
-      bombLegend: 'Incubadora',
-      enemyGuardLegend: 'Guarda inimigo',
-      armoredGuardLegend: 'Guarda blindado',
+      bombLegend: 'Bomba',
+      enemyGuardLegend: 'Infectado',
+      armoredGuardLegend: 'Infectado blindado',
       sniperLegend: 'Infectado batedor (Shadow exposto)',
       selectOperatorHint: 'Selecione um operador para começar.',
       squadA: 'Esquadrão A',
@@ -1190,9 +1190,9 @@ function bootGame() {
       objectiveLabel: 'Ziel:',
       operatorLegend: 'Operator',
       hostageLegend: 'Überlebender',
-      bombLegend: 'Inkubator',
-      enemyGuardLegend: 'Feindlicher Wächter',
-      armoredGuardLegend: 'Gepanzerter Wächter',
+      bombLegend: 'Bombe',
+      enemyGuardLegend: 'Infizierter',
+      armoredGuardLegend: 'Gepanzerter Infizierter',
       sniperLegend: 'Infizierter Späher (Shadow ungeschützt)',
       selectOperatorHint: 'Wähle einen Operator, um zu beginnen.',
       squadA: 'Trupp A',
@@ -1300,9 +1300,9 @@ function bootGame() {
       objectiveLabel: 'Obiettivo:',
       operatorLegend: 'Operatore',
       hostageLegend: 'Sopravvissuto',
-      bombLegend: 'Incubatrice',
-      enemyGuardLegend: 'Guardia nemica',
-      armoredGuardLegend: 'Guardia corazzata',
+      bombLegend: 'Bomba',
+      enemyGuardLegend: 'Infetto',
+      armoredGuardLegend: 'Infetto corazzato',
       sniperLegend: 'Infetto esploratore (Shadow esposto)',
       selectOperatorHint: 'Seleziona un operatore per iniziare.',
       squadA: 'Squadra A',
@@ -1410,9 +1410,9 @@ function bootGame() {
       objectiveLabel: 'Задача:',
       operatorLegend: 'Оперативник',
       hostageLegend: 'Выживший',
-      bombLegend: 'Инкубатор',
-      enemyGuardLegend: 'Охранник',
-      armoredGuardLegend: 'Бронированный охранник',
+      bombLegend: 'Бомба',
+      enemyGuardLegend: 'Заражённый',
+      armoredGuardLegend: 'Бронированный заражённый',
       sniperLegend: 'Заражённый разведчик (Shadow уязвим)',
       selectOperatorHint: 'Выберите оперативника, чтобы начать.',
       squadA: 'Отряд A',
@@ -1520,9 +1520,9 @@ function bootGame() {
       objectiveLabel: '目標：',
       operatorLegend: 'オペレーター',
       hostageLegend: '生存者',
-      bombLegend: 'インキュベーター',
-      enemyGuardLegend: '敵の警備員',
-      armoredGuardLegend: '重装警備員',
+      bombLegend: '爆弾',
+      enemyGuardLegend: '感染者',
+      armoredGuardLegend: '重装感染者',
       sniperLegend: '感染偵察体（Shadowが狙われる）',
       selectOperatorHint: 'オペレーターを選択して開始してください。',
       squadA: 'スクワッドA',
@@ -1630,9 +1630,9 @@ function bootGame() {
       objectiveLabel: '목표:',
       operatorLegend: '오퍼레이터',
       hostageLegend: '생존자',
-      bombLegend: '인큐베이터',
-      enemyGuardLegend: '적 경비병',
-      armoredGuardLegend: '중무장 경비병',
+      bombLegend: '폭탄',
+      enemyGuardLegend: '감염자',
+      armoredGuardLegend: '중무장 감염자',
       sniperLegend: '감염 정찰체 (Shadow 노출됨)',
       selectOperatorHint: '오퍼레이터를 선택해 시작하세요.',
       squadA: '분대 A',
@@ -1740,9 +1740,9 @@ function bootGame() {
       objectiveLabel: '目标：',
       operatorLegend: '干员',
       hostageLegend: '幸存者',
-      bombLegend: '培养舱',
-      enemyGuardLegend: '敌方守卫',
-      armoredGuardLegend: '重装守卫',
+      bombLegend: '炸弹',
+      enemyGuardLegend: '感染者',
+      armoredGuardLegend: '重装感染者',
       sniperLegend: '感染侦察体（Shadow 会暴露）',
       selectOperatorHint: '选择一名干员以开始。',
       squadA: 'A小队',
@@ -1948,6 +1948,13 @@ function bootGame() {
   // à new Audio()/cloneNode() qui gardait un léger délai de lecture audible).
   let audioCtx = null;
   const AUDIO_BUFFERS = {};
+  // Sources "longues" (ex. le grognement d'attaque infecté, ~3s) qu'on doit
+  // pouvoir couper en douceur si la pièce se termine avant la fin naturelle
+  // du son — sinon il continue de jouer par-dessus l'écran "Pièce sécurisée"
+  // qui apparaît, un glitch sonore signalé le 2 oct. 2026. On garde une trace
+  // de chaque source+gain démarrés via playPreloaded(..., trackKey) pour
+  // pouvoir les fader/couper juste avant d'afficher le résultat.
+  let trackedLongSfx = [];
   function getAudioCtx() {
     if (!audioCtx) {
       const AC = window.AudioContext || window.webkitAudioContext;
@@ -2032,7 +2039,7 @@ function bootGame() {
     setTimeout(() => { try { src.stop(); } catch (e) {} }, 900);
   }
 
-  function playPreloaded(key, rate, gain) {
+  function playPreloaded(key, rate, gain, trackAsLong) {
     if (!sfxEnabled) return; // interrupteur "Effets sonores" du menu (option demandée le 27 sept. 2026)
     const buf = AUDIO_BUFFERS[key];
     if (!buf) return; // pas encore décodé (rare) : on n'échoue pas, on saute simplement
@@ -2041,16 +2048,44 @@ function bootGame() {
       const node = ctx.createBufferSource();
       node.buffer = buf;
       node.playbackRate.value = rate || 1.0;
-      if (gain && gain !== 1) {
-        const gainNode = ctx.createGain();
-        gainNode.gain.value = gain;
-        node.connect(gainNode);
-        gainNode.connect(ctx.destination);
-      } else {
-        node.connect(ctx.destination);
-      }
+      // On passe toujours par un gainNode (même à gain=1) quand la source est
+      // trackée, pour pouvoir la fader proprement plus tard sans avoir à
+      // recréer le graphe audio.
+      const gainNode = ctx.createGain();
+      gainNode.gain.value = gain && gain !== 1 ? gain : 1;
+      node.connect(gainNode);
+      gainNode.connect(ctx.destination);
       node.start(0);
+      if (trackAsLong) {
+        const entry = { node, gainNode, done: false };
+        node.onended = () => { entry.done = true; };
+        trackedLongSfx.push(entry);
+        // Évite une fuite mémoire si jamais fadeAndStopLongSfx() n'est pas
+        // appelé pour une raison quelconque (ex. jeu quitté en cours de route).
+        if (trackedLongSfx.length > 40) trackedLongSfx.splice(0, trackedLongSfx.length - 40);
+      }
     } catch (e) {}
+  }
+
+  // Coupe en douceur (fondu ~120ms) toute source sonore "longue" encore en
+  // train de jouer — appelé juste avant de révéler l'écran de fin de pièce,
+  // pour que le grognement d'attaque infecté ne chevauche jamais ce moment.
+  function fadeAndStopLongSfx() {
+    if (!trackedLongSfx.length) return;
+    try {
+      const ctx = getAudioCtx();
+      const now = ctx.currentTime;
+      trackedLongSfx.forEach(({ node, gainNode, done }) => {
+        if (done) return;
+        try {
+          gainNode.gain.cancelScheduledValues(now);
+          gainNode.gain.setValueAtTime(gainNode.gain.value, now);
+          gainNode.gain.linearRampToValueAtTime(0, now + 0.12);
+          setTimeout(() => { try { node.stop(); } catch (e) {} }, 140);
+        } catch (e) {}
+      });
+    } catch (e) {}
+    trackedLongSfx = [];
   }
 
   function playSfx(key) {
@@ -5659,7 +5694,9 @@ const LEVEL_I18N = {"en": {"1": {"name": "Level 1 · Suburb", "sub": "Easy · 5 
           const threatDelay = threatIdx * 260;
           setTimeout(() => {
             spawnEnemyMuzzleFlash(svg, fx, fy, threatId);
-            playPreloaded('sfx-infected-attack', 1.0, 0.9);
+            // Son long (~3s) : trackAsLong=true pour pouvoir le couper en
+            // douceur si la pièce se termine avant sa fin naturelle.
+            playPreloaded('sfx-infected-attack', 1.0, 0.9, true);
           }, threatDelay);
         });
       }, earliestEngageEnd + 200);
@@ -5767,6 +5804,10 @@ const LEVEL_I18N = {"en": {"1": {"name": "Level 1 · Suburb", "sub": "Easy · 5 
     }
 
     setTimeout(() => {
+      // Coupe tout grognement d'infecté encore en train de jouer avant de
+      // révéler l'écran "Pièce sécurisée" — évite le chevauchement sonore
+      // signalé le 2 oct. 2026.
+      fadeAndStopLongSfx();
       showResult({ primarySuccess, noOperatorLost, hostageSafe, hostageFailReason, stealthSuccess, t1Cleared, t2Cleared, hasT2, t3Cleared, hasT3, t4Cleared, hasT4, t5Cleared, hasT5, t6Cleared, hasT6, casualtyIds, isBombRoom, bombDefused, bombFastDefuse });
     }, maxDelay);
   }
