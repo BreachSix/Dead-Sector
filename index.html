@@ -4025,12 +4025,35 @@ const LEVEL_I18N = {"en": {"1": {"name": "Level 1 · Suburb", "sub": "Easy · 5 
     const bySkin = skin && ENV_OPERATOR_IMG_SKINNED[env] && ENV_OPERATOR_IMG_SKINNED[env][skin.slug];
     return bySkin || ENV_OPERATOR_IMG[env] || '';
   }
+  // Portraits d'infecté par environnement — EN LISTE, pas en valeur unique,
+  // pour pouvoir faire tourner plusieurs variantes sur les niveaux qui
+  // partagent le même environnement (ex. les 51 niveaux "urbain" du jeu
+  // montraient tous très exactement le même infecté). Un seul portrait par
+  // environnement pour l'instant (comportement inchangé tant que des
+  // variantes supplémentaires ne sont pas fournies) ; ajouter une entrée à
+  // un tableau suffit à l'activer dans la rotation, aucun autre changement
+  // de code nécessaire.
+  // Réattribution du 1er oct. 2026 (demande du joueur) : chaque infecté est
+  // choisi pour matcher la palette visuelle de son environnement plutôt que
+  // son thème d'origine — Hazmat (jaune, gardé tel quel) va avec la jungle,
+  // Policier (gris/bleu) avec l'urbain, Secrétaire (tons beige/sable) avec
+  // le désert, Scientifique arctique avec l'arctique.
   const ENV_ENEMY_IMG = {
-    urbain: './enemy-securite.png',
-    desert: './enemy-hazmat.png',
-    jungle: './enemy-bureau.png',
-    arctique: './enemy-arctique.png',
+    urbain: ['./enemy-securite.png'],
+    desert: ['./enemy-bureau.png'],
+    jungle: ['./enemy-hazmat.png'],
+    arctique: ['./enemy-arctique.png'],
   };
+  // Choisit la variante d'infecté pour un niveau donné, en tournant à
+  // travers les variantes disponibles pour son environnement (déterministe :
+  // toujours la même variante pour un niveau donné, pas aléatoire à chaque
+  // visite de l'écran de briefing).
+  function getEnemyImgForLevel(env, levelId) {
+    const arr = ENV_ENEMY_IMG[env] || ENV_ENEMY_IMG.urbain;
+    if (!arr || !arr.length) return '';
+    const idx = ((Number(levelId) || 0) - 1) % arr.length;
+    return arr[idx] || arr[0];
+  }
   const CLASS_ENV_OPERATOR_IMG = {
     Assault: ENV_OPERATOR_IMG,
     Heavy: { urbain: './op-heavy.png', desert: './op-heavy.png', jungle: './op-heavy.png', arctique: './op-heavy.png' },
@@ -4557,7 +4580,7 @@ const LEVEL_I18N = {"en": {"1": {"name": "Level 1 · Suburb", "sub": "Easy · 5 
     document.getElementById('briefing-image').alt = getLevelField(levelId, 'name');
     document.getElementById('briefing-operator').src = getBriefingOperatorImg(def.env);
     document.getElementById('briefing-operator').alt = 'Opérateur Assault';
-    document.getElementById('briefing-enemy-img').src = ENV_ENEMY_IMG[def.env] || '';
+    document.getElementById('briefing-enemy-img').src = getEnemyImgForLevel(def.env, levelId);
     document.getElementById('briefing-enemy-img').alt = 'Ennemi';
     document.getElementById('briefing-title').textContent = getLevelField(levelId, 'name');
     document.getElementById('briefing-text').textContent = getLevelField(levelId, 'brief') || '';
@@ -5462,7 +5485,7 @@ const LEVEL_I18N = {"en": {"1": {"name": "Level 1 · Suburb", "sub": "Easy · 5 
         // Ranged classes hold back at a standoff distance; Shadow (machette)
         // always closes in to melee range.
         // Defusing a bomb always requires direct contact, regardless of class.
-        const standoff = isBombRoom ? 8 : (op.cls === 'Shadow' ? 6 : (CLASS_STANDOFF[op.cls] || 50));
+        const rawStandoff = isBombRoom ? 8 : (op.cls === 'Shadow' ? 6 : (CLASS_STANDOFF[op.cls] || 50));
         // Le recul se calcule depuis le DERNIER point de passage réel (pas
         // depuis la porte d'origine) : sur un trajet avec détour, l'angle
         // d'approche final n'a souvent rien à voir avec la direction
@@ -5474,7 +5497,20 @@ const LEVEL_I18N = {"en": {"1": {"name": "Level 1 · Suburb", "sub": "Easy · 5 
         const dist = Math.hypot(dx, dy) || 1;
         const ux = dx / dist, uy = dy / dist;
         const perpX = -uy, perpY = ux;
-        const fan = (i % 3 - 1) * 12; // spread multiple operators around the target
+        // Bug corrigé le 1er oct. 2026 : quand la menace est proche de la
+        // porte/du dernier point de passage (dist courte), un recul de classe
+        // à distance (jusqu'à 75u pour Heavy) dépassait la distance réelle
+        // disponible et reculait l'opérateur AU-DELÀ de son point de départ —
+        // concrètement hors de la pièce, parfois carrément sur le point
+        // d'entrée ou au-delà (repéré en jeu : un Heavy visible hors du
+        // rectangle de la salle). On plafonne le recul à une fraction de la
+        // distance réellement disponible, et on réduit proportionnellement
+        // l'éventail latéral (fan) sur une approche courte, pour qu'aucun
+        // point d'arrêt calculé ne puisse jamais sortir du segment
+        // porte→menace (donc rester dans la pièce, celle-ci étant convexe).
+        const standoff = Math.min(rawStandoff, dist * 0.8);
+        const fanScale = Math.min(1, dist / 40);
+        const fan = (i % 3 - 1) * 12 * fanScale; // spread multiple operators around the target
         targetX = threat.x - ux * standoff + perpX * fan;
         targetY = threat.y - uy * standoff + perpY * fan;
       }
