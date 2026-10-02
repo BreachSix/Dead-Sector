@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'v7';
+const CACHE_VERSION = 'v9';
 const CACHE_NAME = 'deadsector-' + CACHE_VERSION;
 const ASSETS = [
   './',
